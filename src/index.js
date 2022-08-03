@@ -1,21 +1,25 @@
 const Generator = require('yeoman-generator')
 const path = require('path')
 const chalk = require('chalk')
+const ora = require('ora')
+const fetch = require('node-fetch')
 
 const { constants, utils } = require('@adobe/generator-app-common-lib')
-const genericAction = require('@adobe/generator-add-action-generic')
+// const genericAction = require('@adobe/generator-add-action-generic')
+const commerceAction = require('./NewGenerator')
 const { templateInfo, promptQuestions, promptDocs } = require('./templates/prompts')
+// const inquirer = require('inquirer');
 
 /*
-      'initializing',
-      'prompting',
-      'configuring',
-      'default',
-      'writing',
-      'conflicts',
-      'install',
-      'end'
-      */
+'initializing',
+'prompting',
+'configuring',
+'default',
+'writing',
+'conflicts',
+'install',
+'end'
+*/
 
 class CommerceEventsGenerator extends Generator {
   constructor (args, opts) {
@@ -44,7 +48,7 @@ class CommerceEventsGenerator extends Generator {
 
     // generate the generic action
     this.composeWith({
-      Generator: genericAction,
+      Generator: commerceAction,
       path: 'unknown'
     },
     {
@@ -59,35 +63,125 @@ class CommerceEventsGenerator extends Generator {
   async prompting() {
     this.log(templateInfo);
 
-    const precheckAnswer = await this.prompt([
+    const skipPrechecksQuestion = {
+      type: "confirm",
+        name: "skipPrechecks",
+        message: "Do you want to skip the pre-checks and only create your project?",
+        default: false
+    }
+
+    const questions = [
       {
         type: "confirm",
-        name: "response",
-        message: "Do you want to skip all the pre-checks and only create your project?",
+        name: "hasIntegrationTokens",
+        message: "Do you have your Commerce integration details?",
         default: false
-      }
-    ]);
+      },
+      {
+        type: "input",
+        name: "storeURL",
+        message: "Enter Store URL:",
+        store: true,
+        validate: function(store_url) {
+          // valid = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
+          const valid_url = /^(http|https):\/\/[a-zA-Z0-9@:%._\\+~#?&//=]*$/.test(store_url)
 
-    // Perform pre-checks if you don't want to skip it
-    if (!precheckAnswer.response) {
-      for(let [promptId, promptQuestion] of Object.entries(promptQuestions)) {
-        do {
-          var answer = await this.prompt([
-            {
-              type: "confirm",
-              name: "response",
-              message: promptQuestion,
-              default: false
-            }
-          ]);
-  
-          if (!answer.response) {
-            // this.log("Please refer to " + promptDocs[promptId]);
-            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs[promptId]}`)))
+          if (valid_url) {
+            return true
           }
-        } while (!answer.response);
+          return "Invalid Web URL!"
+        },
+        when(answers) {
+          return answers.hasIntegrationTokens;
+        }
+      },
+      {
+        type: "input",
+        name: "accessToken",
+        message: "Enter Access Token:",
+        store: true,
+        when(answers) {
+          return answers.hasIntegrationTokens;
+        }
       }
+    ];
+
+    // var answers = {};
+    // do {
+    //   var answers = await this.prompt(questions);
+    //   if ('hasIntegrationTokens' in answers && !answers.hasIntegrationTokens) {
+    //     this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)));
+    //   }
+
+    //   // this.log(answers)
+    //   if (answers.skipPrechecks) {
+    //     break;
+    //   }
+    // } while (!answers.hasIntegrationTokens);
+
+    // Check for event provider in the Magento instance
+    var skipAnswer = await this.prompt(skipPrechecksQuestion);
+
+    if (!skipAnswer.skipPrechecks) {
+      do {
+        do {
+          var answers = await this.prompt(questions);
+          if ('hasIntegrationTokens' in answers && !answers.hasIntegrationTokens) {
+            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)));
+          }
+
+        } while (!answers.hasIntegrationTokens);
+
+        const configCheckApiEndpoint = "/rest/V1/adobe_io_events/check_configuration"
+        const configCheckURL = answers.storeURL + configCheckApiEndpoint
+
+        // if (!answers.skipPrechecks) {
+        this.log(configCheckURL)
+        const spinner = ora()
+        const response = await fetch(configCheckURL, {
+          method: 'get',
+          headers: {
+            'Authorization': 'Bearer ' + answers.accessToken,
+            'Content-Type': 'application/json'
+          }
+        })
+        if (response.ok) {
+          const content = await response.json()
+          const jsonObj = JSON.parse(JSON.stringify(content))
+    
+          if (jsonObj.status === 'ok') {
+            spinner.succeed(`Verified Configuration for Event Provider`)
+            break
+          } else {
+            spinner.fail(`Verified Configuration for Event Provider`)
+            this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)));
+    
+            var answer = await this.prompt([
+              {
+                type: "confirm",
+                name: "checkEventProvider",
+                message: "Retry again?",
+                default: false
+              }
+            ])
+          }
+        } else {
+          // throw new Error('Request to ' + configCheckURL + ' failed with status code: ' + response.status)
+          this.log('Request to ' + configCheckURL + ' failed with status code: ' + response.status)
+          var answer = await this.prompt({
+            type: "confirm",
+              name: "checkEventProvider",
+              message: "Retry again?",
+              default: false
+          })
+          answers.hasIntegrationTokens = false
+        }
+        
+        // } 
+      } while ('checkEventProvider' in answer && answer.checkEventProvider);
     }
+    // spinner.fail(`Verified Configuration for Event Registration`)
+    // this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkEventRegistration']}`)));
   }
 
   async writing () {

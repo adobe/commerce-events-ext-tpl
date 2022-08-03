@@ -3,11 +3,5 @@ $id: https://adobe.io/schemas/app-builder-templates/1
  
 categories:
   - action
- 
-extension:
-  serviceCode: dx/asset-compute/worker/1
-
-apis:
-- code: AssetComputeSDK
 
 runtime: true

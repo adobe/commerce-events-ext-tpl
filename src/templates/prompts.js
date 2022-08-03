@@ -12,19 +12,19 @@ governing permissions and limitations under the License.
 module.exports = {
     templateInfo: `\nCommerce Events Extension Template:
 
-    * You will be guided through a questionnaire to make sure you have the prerequisites setup properly.
-    * Automated pre-checks will be performed and their status will be reported.
+    * You will be guided through a questionnaire to make sure you have set up the prerequisites properly.
+    * Automated pre-checks related to events configuration will be performed and their status will be reported.
     * An App Builder project will be created with Node.js packages pre-configured.\n`,
     promptQuestions: {
-        commerceIntegrationTokens: "Do you have your Commerce integration tokens?",
-        commerceIntegration: "Is the check for Commerce integration successful?",
-        eventProvider: "Is the check for event provider successful?",
-        eventRegistration: "Is the check for event registration sucessful?"
+        checkIntegrationTokens: "Do you have your Commerce integration tokens?",
+        checkCommerceIntegration: "Is the check for Commerce integration successful?",
+        checkEventProvider: "Is the check for event provider successful?",
+        checkEventRegistration: "Is the check for event registration sucessful?"
     },
     promptDocs: {
-        commerceIntegrationTokens: "https://docs.magento.com/user-guide/system/integrations.html",
-        commerceIntegration: "https://docs.magento.com/user-guide/system/integrations.html",
-        eventProvider: "https://developer.adobe.com/events/docs/guides/using/custom_events/",
-        eventRegistration: "https://developer.adobe.com/events/docs/guides/using/custom_events/"
+        checkIntegrationTokens: "https://docs.magento.com/user-guide/system/integrations.html",
+        checkCommerceIntegration: "https://docs.magento.com/user-guide/system/integrations.html",
+        checkEventProvider: "https://developer.adobe.com/events/docs/guides/using/custom_events/",
+        checkEventRegistration: "https://developer.adobe.com/events/docs/guides/using/custom_events/"
     }
 }
