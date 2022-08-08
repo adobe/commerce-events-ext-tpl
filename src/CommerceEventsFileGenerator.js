@@ -13,7 +13,7 @@ const path = require('path')
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
 
-class NewGenerator extends ActionGenerator {
+class CommerceEventsFileGenerator extends ActionGenerator {
   constructor (args, opts) {
     super(args, opts)
     this.props = {
@@ -61,10 +61,10 @@ const { Core } = require('@adobe/aio-sdk')`,
       },
       actionManifestConfig: {
         inputs: { LOG_LEVEL: 'debug' },
-        annotations: { final: true } // makes sure loglevel cannot be overwritten by request param
+        annotations: { final: true, 'require-adobe-auth': false } // makes sure loglevel cannot be overwritten by request param
       }
     })
   }
 }
 
-module.exports = NewGenerator
+module.exports = CommerceEventsFileGenerator

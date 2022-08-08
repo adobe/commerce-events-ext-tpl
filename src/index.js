@@ -3,11 +3,11 @@ const path = require('path')
 const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
+const execa = require('execa')
 
 const { constants, utils } = require('@adobe/generator-app-common-lib')
-// const genericAction = require('@adobe/generator-add-action-generic')
-const commerceAction = require('./NewGenerator')
-const { templateInfo, promptQuestions, promptDocs } = require('./templates/prompts')
+const commerceFileGenerator = require('./CommerceEventsFileGenerator')
+const { templateInfo, pluginExtensionInfo, promptDocs } = require('./templates/prompts')
 // const inquirer = require('inquirer');
 
 /*
@@ -48,7 +48,7 @@ class CommerceEventsGenerator extends Generator {
 
     // generate the generic action
     this.composeWith({
-      Generator: commerceAction,
+      Generator: commerceFileGenerator,
       path: 'unknown'
     },
     {
@@ -66,7 +66,7 @@ class CommerceEventsGenerator extends Generator {
     const skipPrechecksQuestion = {
       type: "confirm",
         name: "skipPrechecks",
-        message: "Do you want to skip the pre-checks and only create your project?",
+        message: "Do you want to skip the questionnaire and create your project only?",
         default: false
     }
 
@@ -83,7 +83,6 @@ class CommerceEventsGenerator extends Generator {
         message: "Enter Store URL:",
         store: true,
         validate: function(store_url) {
-          // valid = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
           const valid_url = /^(http|https):\/\/[a-zA-Z0-9@:%._\\+~#?&//=]*$/.test(store_url)
 
           if (valid_url) {
@@ -100,6 +99,14 @@ class CommerceEventsGenerator extends Generator {
         name: "accessToken",
         message: "Enter Access Token:",
         store: true,
+        validate: function(access_token) {
+          const valid_access_token = /^[a-zA-Z0-9]+$/.test(access_token)
+
+          if (valid_access_token) {
+            return true
+          }
+          return "Invalid Access Token!"
+        },
         when(answers) {
           return answers.hasIntegrationTokens;
         }
@@ -127,61 +134,96 @@ class CommerceEventsGenerator extends Generator {
         do {
           var answers = await this.prompt(questions);
           if ('hasIntegrationTokens' in answers && !answers.hasIntegrationTokens) {
-            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)));
+            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)) + '\n');
           }
 
         } while (!answers.hasIntegrationTokens);
 
-        const configCheckApiEndpoint = "/rest/V1/adobe_io_events/check_configuration"
-        const configCheckURL = answers.storeURL + configCheckApiEndpoint
+        const checkEventProviderApiEndpoint = "/rest/V1/adobe_io_events/check_configuration"
+        const checkEventProviderStoreApiEndpoint = answers.storeURL + checkEventProviderApiEndpoint
+        const headers = {
+          'Authorization': `Bearer ${answers.accessToken}`,
+          'Content-Type': 'application/json'
+        }
 
-        // if (!answers.skipPrechecks) {
-        this.log(configCheckURL)
+        // this.log("URL: " + configCheckURL)
         const spinner = ora()
-        const response = await fetch(configCheckURL, {
-          method: 'get',
-          headers: {
-            'Authorization': 'Bearer ' + answers.accessToken,
-            'Content-Type': 'application/json'
-          }
-        })
-        if (response.ok) {
-          const content = await response.json()
-          const jsonObj = JSON.parse(JSON.stringify(content))
-    
-          if (jsonObj.status === 'ok') {
-            spinner.succeed(`Verified Configuration for Event Provider`)
-            break
+        try {
+          spinner.start("Checking event provider configuration...")
+          const response = await fetch(checkEventProviderStoreApiEndpoint, {
+            method: 'get',
+            headers: headers
+          })
+          if (response.ok) {
+            const content = await response.json()
+            const jsonObj = JSON.parse(JSON.stringify(content))
+      
+            if (jsonObj.status === 'ok') {
+              spinner.succeed(`Verified Configuration for Event Provider\n`)
+              break
+            } else {
+              spinner.fail(`Verified Configuration for Event Provider`)
+              this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)) + '\n');
+      
+              var answer = await this.prompt([
+                {
+                  type: "confirm",
+                  name: "retry",
+                  message: "Retry again?",
+                  default: false
+                }
+              ])
+            }
           } else {
-            spinner.fail(`Verified Configuration for Event Provider`)
-            this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)));
-    
-            var answer = await this.prompt([
-              {
-                type: "confirm",
-                name: "checkEventProvider",
-                message: "Retry again?",
-                default: false
-              }
-            ])
-          }
-        } else {
-          // throw new Error('Request to ' + configCheckURL + ' failed with status code: ' + response.status)
-          this.log('Request to ' + configCheckURL + ' failed with status code: ' + response.status)
-          var answer = await this.prompt({
-            type: "confirm",
-              name: "checkEventProvider",
+            const content = await response.json()
+            const jsonObj = JSON.parse(JSON.stringify(content))
+      
+            this.log(jsonObj.message)
+            this.log(error.message)
+            var answer = await this.prompt({
+              type: "confirm",
+              name: "retry",
               message: "Retry again?",
               default: false
+            })
+            answers.hasIntegrationTokens = false
+            }
+        } catch (error) {
+          this.log(error.message)
+          var answer = await this.prompt({
+            type: "confirm",
+            name: "retry",
+            message: "Retry again?",
+            default: false
           })
           answers.hasIntegrationTokens = false
         }
-        
-        // } 
-      } while ('checkEventProvider' in answer && answer.checkEventProvider);
+      } while (answer?.retry);
     }
-    // spinner.fail(`Verified Configuration for Event Registration`)
-    // this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkEventRegistration']}`)));
+
+    const eventTypesAnswer = await this.prompt({
+      type: "checkbox",
+      name: "eventTypes",
+      message: "Select event types of interest",
+      choices: [
+        {
+          name: "com.adobe.commerce.product.created"
+        },
+        {
+          name: "com.adobe.commerce.product.updated"
+        }
+      ]
+    })
+
+    this.props['eventTypes'] = eventTypesAnswer.eventTypes
+
+    this.log(pluginExtensionInfo)
+    var answer = await this.prompt({
+      type: "confirm",
+      name: "installExtension",
+      message: "Do you want to install aio-cli-plugin-extension?",
+      default: false
+    })
   }
 
   async writing () {
@@ -201,6 +243,63 @@ class CommerceEventsGenerator extends Generator {
       )
     }
   }
+
+  async end () {
+    const keyToEventTypes = this.keyToManifest + `.packages.commerce-template-proj.actions.generic.relations.event-listener-for`
+    // this.log(keyToEventTypes)
+    // this.log(this.configPath)
+    // this.log(path.dirname(this.configPath))
+    utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
+  }
+}
+
+/** @private */
+async function runScript (command, dir, cmdArgs = []) {
+  if (!command) {
+    return null
+  }
+  if (!dir) {
+    dir = process.cwd()
+  }
+
+  if (cmdArgs.length) {
+    command = `${command} ${cmdArgs.join(' ')}`
+  }
+
+  // we have to disable IPC for Windows (see link in debug line below)
+  const isWindows = process.platform === 'win32'
+  const ipc = isWindows ? null : 'ipc'
+
+  const child = execa.command(command, {
+    stdio: ['inherit', 'inherit', 'inherit', ipc],
+    shell: true,
+    cwd: dir,
+    preferLocal: true
+  })
+
+  if (isWindows) {
+    aioLogger.debug(`os is Windows, so we can't use ipc when running ${command}`)
+    aioLogger.debug('see: https://github.com/adobe/aio-cli-plugin-app/issues/372')
+  } else {
+    // handle IPC from possible aio-run-detached script
+    child.on('message', message => {
+      if (message.type === 'long-running-process') {
+        const { pid, logs } = message.data
+        aioLogger.debug(`Found ${command} event hook long running process (pid: ${pid}). Registering for SIGTERM`)
+        aioLogger.debug(`Log locations for ${command} event hook long-running process (stdout: ${logs.stdout} stderr: ${logs.stderr})`)
+        process.on('exit', () => {
+          try {
+            aioLogger.debug(`Killing ${command} event hook long-running process (pid: ${pid})`)
+            process.kill(pid, 'SIGTERM')
+          } catch (_) {
+          // do nothing if pid not found
+          }
+        })
+      }
+    })
+  }
+
+  return child
 }
 
 module.exports = CommerceEventsGenerator

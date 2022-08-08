@@ -10,17 +10,18 @@ governing permissions and limitations under the License.
 */
 
 module.exports = {
-    templateInfo: `\nCommerce Events Extension Template:
-
-    * You will be guided through a questionnaire to make sure you have set up the prerequisites properly.
-    * Automated pre-checks related to events configuration will be performed and their status will be reported.
+    templateInfo: `\nCommerce Events Extension Template Overview:\n
+    * You will be guided through a questionnaire to help you set up your custom events with relevant documentation links.
+    * Pre-check for a valid event provider will be performed in your Commerce instance.
+    * You can install an optional plugin to enable App Builder Webhook Auto Subscriptions.
     * An App Builder project will be created with Node.js packages pre-configured.\n`,
-    promptQuestions: {
-        checkIntegrationTokens: "Do you have your Commerce integration tokens?",
-        checkCommerceIntegration: "Is the check for Commerce integration successful?",
-        checkEventProvider: "Is the check for event provider successful?",
-        checkEventRegistration: "Is the check for event registration sucessful?"
-    },
+    pluginExtensionInfo: `\nApp Builder Webhook Auto Subscriptions (aio-cli-plugin-extension) Overview:\n
+    * The integration between [App builder project and I/O Events] allows to create applications that listen to Adobe events.
+    * App Builder webhook auto subscriptions push this concept further by subscribing your newly deployed project to I/O Events
+      automatically, so you can easily deploy your application in different environments or even share your application with 
+      other organizations.
+    * Also, this technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
+      manual setup in the Developer Console.\n`,
     promptDocs: {
         checkIntegrationTokens: "https://docs.magento.com/user-guide/system/integrations.html",
         checkCommerceIntegration: "https://docs.magento.com/user-guide/system/integrations.html",
