@@ -27,12 +27,12 @@ class CommerceEventsGenerator extends Generator {
 
     // options are inputs from CLI or yeoman parent generator
     this.option('dest-folder', { type: String, default: '.' })
+    // this.option('project-name', { type: String, default: 'project-name-not-set' })
 
     // props are used by templates
     this.props = {
       destFolder: this.options['dest-folder'],
-      projectName: this.options['project-name'],
-      dirName: path.basename(process.cwd())
+      // projectName: this.options['project-name']
     }
 
     // options are inputs from CLI or yeoman parent generator
@@ -112,19 +112,6 @@ class CommerceEventsGenerator extends Generator {
         }
       }
     ];
-
-    // var answers = {};
-    // do {
-    //   var answers = await this.prompt(questions);
-    //   if ('hasIntegrationTokens' in answers && !answers.hasIntegrationTokens) {
-    //     this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)));
-    //   }
-
-    //   // this.log(answers)
-    //   if (answers.skipPrechecks) {
-    //     break;
-    //   }
-    // } while (!answers.hasIntegrationTokens);
 
     // Check for event provider in the Magento instance
     var skipAnswer = await this.prompt(skipPrechecksQuestion);
@@ -250,3 +237,5 @@ class CommerceEventsGenerator extends Generator {
     // utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
   }
 }
+
+module.exports = CommerceEventsGenerator

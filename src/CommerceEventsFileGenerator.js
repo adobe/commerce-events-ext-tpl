@@ -45,7 +45,6 @@ const { Core } = require('@adobe/aio-sdk')`,
 
   async prompting () {
     this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', GENERIC_ACTION_NAME)
-    actionName = this.props.actionName
   }
 
   writing () {
