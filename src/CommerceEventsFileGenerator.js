@@ -12,6 +12,7 @@ governing permissions and limitations under the License.
 const path = require('path')
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
+const GENERIC_ACTION_NAME = 'generic'
 
 class CommerceEventsFileGenerator extends ActionGenerator {
   constructor (args, opts) {
@@ -43,7 +44,8 @@ const { Core } = require('@adobe/aio-sdk')`,
   }
 
   async prompting () {
-    this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', GENERIC_ACTION_NAME)
+    actionName = this.props.actionName
   }
 
   writing () {

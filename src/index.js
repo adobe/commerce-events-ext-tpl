@@ -27,12 +27,12 @@ class CommerceEventsGenerator extends Generator {
 
     // options are inputs from CLI or yeoman parent generator
     this.option('dest-folder', { type: String, default: '.' })
-    this.option('project-name', { type: String, default: 'project-name-not-set' })
 
     // props are used by templates
     this.props = {
       destFolder: this.options['dest-folder'],
-      projectName: this.options['project-name']
+      projectName: this.options['project-name'],
+      dirName: path.basename(process.cwd())
     }
 
     // options are inputs from CLI or yeoman parent generator
@@ -226,7 +226,7 @@ class CommerceEventsGenerator extends Generator {
     })
   }
 
-  async writing () {
+  async writing() {
     utils.writeKeyAppConfig(this, 'application.actions', path.relative(this.appFolder, this.actionFolder))
 
     const destFolder = this.props.destFolder
@@ -244,62 +244,9 @@ class CommerceEventsGenerator extends Generator {
     }
   }
 
-  async end () {
-    const keyToEventTypes = this.keyToManifest + `.packages.commerce-template-proj.actions.generic.relations.event-listener-for`
+  async end() {
+    // const keyToEventTypes = this.keyToManifest + `.packages.${__dirname}.actions.${commerceFileGenerator.props.actionName}.relations.event-listener-for`
     // this.log(keyToEventTypes)
-    // this.log(this.configPath)
-    // this.log(path.dirname(this.configPath))
-    utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
+    // utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
   }
 }
-
-/** @private */
-async function runScript (command, dir, cmdArgs = []) {
-  if (!command) {
-    return null
-  }
-  if (!dir) {
-    dir = process.cwd()
-  }
-
-  if (cmdArgs.length) {
-    command = `${command} ${cmdArgs.join(' ')}`
-  }
-
-  // we have to disable IPC for Windows (see link in debug line below)
-  const isWindows = process.platform === 'win32'
-  const ipc = isWindows ? null : 'ipc'
-
-  const child = execa.command(command, {
-    stdio: ['inherit', 'inherit', 'inherit', ipc],
-    shell: true,
-    cwd: dir,
-    preferLocal: true
-  })
-
-  if (isWindows) {
-    aioLogger.debug(`os is Windows, so we can't use ipc when running ${command}`)
-    aioLogger.debug('see: https://github.com/adobe/aio-cli-plugin-app/issues/372')
-  } else {
-    // handle IPC from possible aio-run-detached script
-    child.on('message', message => {
-      if (message.type === 'long-running-process') {
-        const { pid, logs } = message.data
-        aioLogger.debug(`Found ${command} event hook long running process (pid: ${pid}). Registering for SIGTERM`)
-        aioLogger.debug(`Log locations for ${command} event hook long-running process (stdout: ${logs.stdout} stderr: ${logs.stderr})`)
-        process.on('exit', () => {
-          try {
-            aioLogger.debug(`Killing ${command} event hook long-running process (pid: ${pid})`)
-            process.kill(pid, 'SIGTERM')
-          } catch (_) {
-          // do nothing if pid not found
-          }
-        })
-      }
-    })
-  }
-
-  return child
-}
-
-module.exports = CommerceEventsGenerator
