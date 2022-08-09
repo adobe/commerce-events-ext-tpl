@@ -226,7 +226,7 @@ class CommerceEventsGenerator extends Generator {
     }
 
     const eventsClient = await getEventsClient()
-    const eventCodes = await findEventTypesForProviderId(eventsClient, providerIdConfig)
+    const eventCodes = await findEventCodesForProviderId(eventsClient, providerIdConfig)
     
     const choices = eventCodes.map(code => { return { name: code } })
     // this.log(choices)
@@ -234,7 +234,7 @@ class CommerceEventsGenerator extends Generator {
     const eventCodesPrompt = await this.prompt({
       type: "checkbox",
       name: "eventCodes",
-      message: "Select event types of interest",
+      message: "Select event codes of interest",
       choices: choices
     })
 
@@ -286,9 +286,9 @@ class CommerceEventsGenerator extends Generator {
   }
 
   end() {
-    const keyToEventTypes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
-    // this.log(keyToEventTypes)
-    utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
+    const keyToEventCodes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
+    // this.log(keyToEventCodes)
+    utils.writeKeyAppConfig(this, keyToEventCodes, this.props['eventCodes'])
   }
 
 }
@@ -352,13 +352,13 @@ async function getEventsClient() {
   return client
 }
 
-async function findEventTypesForProviderId (client, providerId) {
+async function findEventCodesForProviderId (client, providerId) {
   const spinner = ora()
-  spinner.start('Fetching event types...')
+  spinner.start('Fetching event codes...')
   const providerInfo = await client.getAllEventMetadataForProvider(providerId)
 
   const eventCodes = providerInfo._embedded.eventmetadata.map(e => e.event_code)
-  // const eventTypes = providerInfo._embedded.eventmetadata
+  // const eventCodes = providerInfo._embedded.eventmetadata
   spinner.stop()
   
   // this.log('Event provider id doesn\'t exist in your organization ' + orgId)
