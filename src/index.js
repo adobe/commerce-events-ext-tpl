@@ -3,12 +3,22 @@ const path = require('path')
 const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
-// const execa = require('execa')
 
 const { constants, utils } = require('@adobe/generator-app-common-lib')
+const eventsSdk = require('@adobe/aio-lib-events')
+const coreConfig = require('@adobe/aio-lib-core-config')
+const { getToken, context } = require('@adobe/aio-lib-ims')
+const { getCliEnv } = require('@adobe/aio-lib-env')
+const { CLI } = require('@adobe/aio-lib-ims/src/context')
+const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
 const commerceFileGenerator = require('./CommerceEventsFileGenerator')
 const { templateInfo, pluginExtensionInfo, promptDocs } = require('./templates/prompts')
-// const inquirer = require('inquirer');
+const inquirer = require('inquirer');
+
+const CONSOLE_API_KEYS = {
+  prod: 'aio-cli-console-auth',
+  stage: 'aio-cli-console-auth-stage'
+}
 
 /*
 'initializing',
@@ -48,44 +58,44 @@ class CommerceEventsGenerator extends Generator {
     this.log(templateInfo)
   }
 
-  async promptForActionName (actionPurpose, defaultValue) {
-    if (actionPurpose == undefined && defaultValue == undefined) {
-      return
-    }
+  // async promptForActionName (actionPurpose, defaultValue) {
+  //   if (actionPurpose == undefined && defaultValue == undefined) {
+  //     return
+  //   }
 
-    let actionName = defaultValue
-    if (!this.options['skip-prompt']) {
-      const promptProps = await this.prompt([
-        {
-          type: 'input',
-          name: 'actionName',
-          message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
-          default: actionName,
-          when: !this.options['skip-prompt'],
-          validate (input) {
-          // must be a valid openwhisk action name, this is a simplified set see:
-          // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
-            const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
-            if (valid.test(input)) {
-              return true
-            }
-            return `'${input}' is not a valid action name, please make sure that:
-                    The name has at least 3 characters or less than 33 characters.
-                    The first character is an alphanumeric character.
-                    The subsequent characters are alphanumeric.
-                    The last character isn't a space.
-                    Note: characters can only be split by '-'.`
-          }
-        }
-      ])
-      actionName = promptProps.actionName
-    }
+  //   let actionName = defaultValue
+  //   if (!this.options['skip-prompt']) {
+  //     const promptProps = await this.prompt([
+  //       {
+  //         type: 'input',
+  //         name: 'actionName',
+  //         message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
+  //         default: actionName,
+  //         when: !this.options['skip-prompt'],
+  //         validate (input) {
+  //         // must be a valid openwhisk action name, this is a simplified set see:
+  //         // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
+  //           const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
+  //           if (valid.test(input)) {
+  //             return true
+  //           }
+  //           return `'${input}' is not a valid action name, please make sure that:
+  //                   The name has at least 3 characters or less than 33 characters.
+  //                   The first character is an alphanumeric character.
+  //                   The subsequent characters are alphanumeric.
+  //                   The last character isn't a space.
+  //                   Note: characters can only be split by '-'.`
+  //         }
+  //       }
+  //     ])
+  //     actionName = promptProps.actionName
+  //   }
 
-    return actionName
-  }
+  //   return actionName
+  // }
 
   async prompting() {
-    this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    // this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
 
     const skipPrechecksQuestion = {
       type: "confirm",
@@ -139,6 +149,7 @@ class CommerceEventsGenerator extends Generator {
 
     // Check for event provider in the Magento instance
     var skipAnswer = await this.prompt(skipPrechecksQuestion);
+    var providerIdConfig;
 
     if (!skipAnswer.skipPrechecks) {
       do {
@@ -171,6 +182,8 @@ class CommerceEventsGenerator extends Generator {
       
             if (jsonObj.status === 'ok') {
               spinner.succeed(`Verified Configuration for Event Provider\n`)
+              providerIdConfig = jsonObj.provider_id_configured
+              // this.log(providerIdConfig)
               break
             } else {
               spinner.fail(`Verified Configuration for Event Provider`)
@@ -212,21 +225,20 @@ class CommerceEventsGenerator extends Generator {
       } while (answer?.retry);
     }
 
-    const eventTypesAnswer = await this.prompt({
+    const eventsClient = await getEventsClient()
+    const eventCodes = await findEventTypesForProviderId(eventsClient, providerIdConfig)
+    
+    const choices = eventCodes.map(code => { return { name: code } })
+    // this.log(choices)
+
+    const eventCodesPrompt = await this.prompt({
       type: "checkbox",
-      name: "eventTypes",
+      name: "eventCodes",
       message: "Select event types of interest",
-      choices: [
-        {
-          name: "com.adobe.commerce.product.created"
-        },
-        {
-          name: "com.adobe.commerce.product.updated"
-        }
-      ]
+      choices: choices
     })
 
-    this.props['eventTypes'] = eventTypesAnswer.eventTypes
+    this.props['eventCodes'] = eventCodesPrompt.eventCodes
 
     this.log(pluginExtensionInfo)
     var answer = await this.prompt({
@@ -235,6 +247,8 @@ class CommerceEventsGenerator extends Generator {
       message: "Do you want to install aio-cli-plugin-extension?",
       default: false
     })
+
+    this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
   }
 
   writing() {
@@ -273,9 +287,82 @@ class CommerceEventsGenerator extends Generator {
 
   end() {
     const keyToEventTypes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
-    this.log(keyToEventTypes)
+    // this.log(keyToEventTypes)
     utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
   }
+
+}
+
+async function promptForActionName (actionPurpose, defaultValue) {
+  // if (actionPurpose == undefined && defaultValue == undefined) {
+  //   return
+  // }
+
+  let actionName = defaultValue
+  if (true) {
+    const promptProps = await inquirer.prompt([
+      {
+        type: 'input',
+        name: 'actionName',
+        message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
+        default: actionName,
+        // when: !this.options['skip-prompt'],
+        validate (input) {
+        // must be a valid openwhisk action name, this is a simplified set see:
+        // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
+          const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
+          if (valid.test(input)) {
+            return true
+          }
+          return `'${input}' is not a valid action name, please make sure that:
+                  The name has at least 3 characters or less than 33 characters.
+                  The first character is an alphanumeric character.
+                  The subsequent characters are alphanumeric.
+                  The last character isn't a space.
+                  Note: characters can only be split by '-'.`
+        }
+      }
+    ])
+    actionName = promptProps.actionName
+  }
+
+  return actionName
+}
+
+async function getEventsClient() {
+  // load console configuration from .aio and .env files
+  const projectConfig = coreConfig.get('project')
+  if (!projectConfig) {
+    throw new Error('Incomplete .aio configuration, please import a valid Adobe Developer Console configuration via `aio app use` first.')
+  }
+
+  const orgId = projectConfig.org.id
+  const orgCode = projectConfig.org.ims_org_id
+  const workspace = { name: projectConfig.workspace.name, id: projectConfig.workspace.id }
+
+  const env = getCliEnv()
+  await context.setCli({ 'cli.bare-output': true }, false) // set this globally
+  const accessToken = await getToken(CLI)
+  const cliObject = await context.getCli()
+  const apiKey = CONSOLE_API_KEYS[env]
+  const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
+  const workspaceCreds = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
+  const client = await eventsSdk.init(orgCode, workspaceCreds.client_id, accessToken)
+
+  return client
+}
+
+async function findEventTypesForProviderId (client, providerId) {
+  const spinner = ora()
+  spinner.start('Fetching event types...')
+  const providerInfo = await client.getAllEventMetadataForProvider(providerId)
+
+  const eventCodes = providerInfo._embedded.eventmetadata.map(e => e.event_code)
+  // const eventTypes = providerInfo._embedded.eventmetadata
+  spinner.stop()
+  
+  // this.log('Event provider id doesn\'t exist in your organization ' + orgId)
+  return eventCodes
 }
 
 module.exports = CommerceEventsGenerator
