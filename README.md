@@ -27,7 +27,9 @@ App Builder Template for Commerce Event-Driven Extension
 3. [@adobe/aio-cli-plugin-extension 1.0.0](https://github.com/adobe/aio-cli-plugin-extension)
 
 # Usage
-1. `aio app init <your-project-name> --template <relative-path-from-project-root>`
+1. `aio app init <your-project-name> --template <relative-path-to-template-folder-from-project-root>`
+    OR
+   `aio app init <your-project-name> --template <absolute-path-to-template-folder>`
 2. Check your `app.config.yaml` file to see if the actions and event codes are set up correctly.
 3. `aio app deploy` & `aio app undeploy` will take care of the event registration/subscription if `aio-cli-plugin-extension` is installed.
 
