@@ -3,7 +3,7 @@ const path = require('path')
 const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
-const execa = require('execa')
+// const execa = require('execa')
 
 const { constants, utils } = require('@adobe/generator-app-common-lib')
 const commerceFileGenerator = require('./CommerceEventsFileGenerator')
@@ -27,41 +27,65 @@ class CommerceEventsGenerator extends Generator {
 
     // options are inputs from CLI or yeoman parent generator
     this.option('dest-folder', { type: String, default: '.' })
-    // this.option('project-name', { type: String, default: 'project-name-not-set' })
 
     // props are used by templates
     this.props = {
       destFolder: this.options['dest-folder'],
-      // projectName: this.options['project-name']
+      dirName: path.basename(process.cwd())
     }
 
     // options are inputs from CLI or yeoman parent generator
     this.option('skip-prompt', { default: true })
   }
 
-  async initializing () {
+  initializing () {
     // all paths are relative to root
     this.appFolder = '.'
     this.actionFolder = path.join(this.appFolder, 'actions')
     this.configPath = path.join(this.appFolder, 'app.config.yaml')
     this.keyToManifest = 'application.' + constants.runtimeManifestKey
 
-    // generate the generic action
-    this.composeWith({
-      Generator: commerceFileGenerator,
-      path: 'unknown'
-    },
-    {
-      // forward needed args
-      'skip-prompt': false, // do not ask for action name
-      'action-folder': this.actionFolder,
-      'config-path': this.configPath,
-      'full-key-to-manifest': this.keyToManifest
-    })
+    this.log(templateInfo)
+  }
+
+  async promptForActionName (actionPurpose, defaultValue) {
+    if (actionPurpose == undefined && defaultValue == undefined) {
+      return
+    }
+
+    let actionName = defaultValue
+    if (!this.options['skip-prompt']) {
+      const promptProps = await this.prompt([
+        {
+          type: 'input',
+          name: 'actionName',
+          message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
+          default: actionName,
+          when: !this.options['skip-prompt'],
+          validate (input) {
+          // must be a valid openwhisk action name, this is a simplified set see:
+          // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
+            const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
+            if (valid.test(input)) {
+              return true
+            }
+            return `'${input}' is not a valid action name, please make sure that:
+                    The name has at least 3 characters or less than 33 characters.
+                    The first character is an alphanumeric character.
+                    The subsequent characters are alphanumeric.
+                    The last character isn't a space.
+                    Note: characters can only be split by '-'.`
+          }
+        }
+      ])
+      actionName = promptProps.actionName
+    }
+
+    return actionName
   }
 
   async prompting() {
-    this.log(templateInfo);
+    this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', 'generic')
 
     const skipPrechecksQuestion = {
       type: "confirm",
@@ -165,8 +189,8 @@ class CommerceEventsGenerator extends Generator {
             const content = await response.json()
             const jsonObj = JSON.parse(JSON.stringify(content))
       
-            this.log(jsonObj.message)
-            this.log(error.message)
+            // this.log(jsonObj.message)
+            // this.log(error.message)
             var answer = await this.prompt({
               type: "confirm",
               name: "retry",
@@ -213,7 +237,7 @@ class CommerceEventsGenerator extends Generator {
     })
   }
 
-  async writing() {
+  writing() {
     utils.writeKeyAppConfig(this, 'application.actions', path.relative(this.appFolder, this.actionFolder))
 
     const destFolder = this.props.destFolder
@@ -231,10 +255,26 @@ class CommerceEventsGenerator extends Generator {
     }
   }
 
-  async end() {
-    // const keyToEventTypes = this.keyToManifest + `.packages.${__dirname}.actions.${commerceFileGenerator.props.actionName}.relations.event-listener-for`
-    // this.log(keyToEventTypes)
-    // utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
+  install() {
+    // generate the generic action
+    this.composeWith({
+      Generator: commerceFileGenerator,
+      path: 'unknown'
+    },
+    {
+      // forward needed args
+      'skip-prompt': true, // do not ask for action name
+      'action-folder': this.actionFolder,
+      'config-path': this.configPath,
+      'full-key-to-manifest': this.keyToManifest,
+      'action-name': this.props.actionName
+    })
+  }
+
+  end() {
+    const keyToEventTypes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
+    this.log(keyToEventTypes)
+    utils.writeKeyAppConfig(this, keyToEventTypes, this.props['eventTypes'])
   }
 }
 

@@ -41,11 +41,12 @@ const { Core } = require('@adobe/aio-sdk')`,
       body: content
     }`
     }
+    this.props.actionName = this.options['action-name']
   }
 
-  async prompting () {
-    this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', GENERIC_ACTION_NAME)
-  }
+  // async prompting () {
+    // this.props.actionName = await this.promptForActionName('showcases how to develop Commerce event extensions', GENERIC_ACTION_NAME)
+  // }
 
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
@@ -61,6 +62,7 @@ const { Core } = require('@adobe/aio-sdk')`,
         'node-fetch': '^2.6.0'
       },
       actionManifestConfig: {
+        web: 'no',
         inputs: { LOG_LEVEL: 'debug' },
         annotations: { final: true, 'require-adobe-auth': false } // makes sure loglevel cannot be overwritten by request param
       }
