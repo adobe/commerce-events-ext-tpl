@@ -22,7 +22,7 @@ App Builder Template for Commerce Event-Driven Extension
 - I/O Management API
 
 # Additional Plugin Requirements
-1. [@adobe/aio-cli-plugin-app-templates 1.0.0-beta.6](https://github.com/adobe/aio-cli-plugin-app-templates/blob/main/README.md)
+1. [@adobe/aio-cli-plugin-app-templates 1.0.0-beta.6](https://github.com/adobe/aio-cli-plugin-app-templates)
 2. [@adobe/aio-cli-plugin-app (Switch to 'story/ACNA-1650' branch)](https://github.com/adobe/aio-cli-plugin-app)
 3. [@adobe/aio-cli-plugin-extension 1.0.0](https://github.com/adobe/aio-cli-plugin-extension)
 
