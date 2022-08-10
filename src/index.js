@@ -225,29 +225,31 @@ class CommerceEventsGenerator extends Generator {
         }
       } while (answer?.retry);
     }
-
-    const eventsClient = await getEventsClient()
-    const eventCodes = await findEventCodesForProviderId(eventsClient, providerIdConfig)
     
-    const choices = eventCodes.map(code => { return { name: code } })
-    // this.log(choices)
+    if (providerIdConfig != undefined) {
+      const eventsClient = await getEventsClient()
+      const eventCodes = await findEventCodesForProviderId(eventsClient, providerIdConfig)
+      
+      const choices = eventCodes.map(code => { return { name: code } })
+      // this.log(choices)
 
-    const eventCodesPrompt = await this.prompt({
-      type: "checkbox",
-      name: "eventCodes",
-      message: "Select event codes of interest",
-      choices: choices
-    })
+      const eventCodesPrompt = await this.prompt({
+        type: "checkbox",
+        name: "eventCodes",
+        message: "Select event codes of interest",
+        choices: choices
+      })
 
-    this.props['eventCodes'] = eventCodesPrompt.eventCodes
+      this.props['eventCodes'] = eventCodesPrompt.eventCodes
 
-    this.log(pluginExtensionInfo)
-    var answer = await this.prompt({
-      type: "confirm",
-      name: "installExtension",
-      message: "Do you want to install aio-cli-plugin-extension?",
-      default: false
-    })
+      this.log(pluginExtensionInfo)
+      var answer = await this.prompt({
+        type: "confirm",
+        name: "installExtension",
+        message: "Do you want to install aio-cli-plugin-extension?",
+        default: false
+      })
+    }
 
     this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
   }
