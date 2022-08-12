@@ -42,6 +42,7 @@ const { Core } = require('@adobe/aio-sdk')`,
     }`
     }
     this.props.actionName = this.options['action-name']
+    this.props.srcFolder = this.options['src-folder']
   }
 
   // async prompting () {
@@ -51,7 +52,7 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
-    this.addAction(this.props.actionName, commonTemplates['stub-action'], {
+    this.addAction(this.props.actionName, this.props.srcFolder, {
       testFile: './templates/index.js',
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
@@ -59,7 +60,8 @@ const { Core } = require('@adobe/aio-sdk')`,
       tplContext: this.props,
       dependencies: {
         '@adobe/aio-sdk': commonDependencyVersions['@adobe/aio-sdk'],
-        'node-fetch': '^2.6.0'
+        'node-fetch': '^2.6.0',
+        'request': '^2.88.2'
       },
       actionManifestConfig: {
         web: 'no',

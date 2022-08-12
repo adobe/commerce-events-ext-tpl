@@ -37,10 +37,13 @@ class CommerceEventsGenerator extends Generator {
     super(args, opts)
 
     // options are inputs from CLI or yeoman parent generator
+    // this.option('src-folder', { type: String, default: path.resolve(__dirname, './templates/default-action.js') })
+    this.option('src-folder', { type: String, default: './templates/default-action.js' })
     this.option('dest-folder', { type: String, default: '.' })
 
     // props are used by templates
     this.props = {
+      srcFolder: this.options['src-folder'],
       destFolder: this.options['dest-folder'],
       dirName: path.basename(process.cwd())
     }
@@ -59,44 +62,7 @@ class CommerceEventsGenerator extends Generator {
     this.log(templateInfo)
   }
 
-  // async promptForActionName (actionPurpose, defaultValue) {
-  //   if (actionPurpose == undefined && defaultValue == undefined) {
-  //     return
-  //   }
-
-  //   let actionName = defaultValue
-  //   if (!this.options['skip-prompt']) {
-  //     const promptProps = await this.prompt([
-  //       {
-  //         type: 'input',
-  //         name: 'actionName',
-  //         message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
-  //         default: actionName,
-  //         when: !this.options['skip-prompt'],
-  //         validate (input) {
-  //         // must be a valid openwhisk action name, this is a simplified set see:
-  //         // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
-  //           const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
-  //           if (valid.test(input)) {
-  //             return true
-  //           }
-  //           return `'${input}' is not a valid action name, please make sure that:
-  //                   The name has at least 3 characters or less than 33 characters.
-  //                   The first character is an alphanumeric character.
-  //                   The subsequent characters are alphanumeric.
-  //                   The last character isn't a space.
-  //                   Note: characters can only be split by '-'.`
-  //         }
-  //       }
-  //     ])
-  //     actionName = promptProps.actionName
-  //   }
-
-  //   return actionName
-  // }
-
   async prompting() {
-    // this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
 
     const skipPrechecksQuestion = {
       type: "confirm",
@@ -256,20 +222,6 @@ class CommerceEventsGenerator extends Generator {
 
   writing() {
     utils.writeKeyAppConfig(this, 'application.actions', path.relative(this.appFolder, this.actionFolder))
-
-    const destFolder = this.props.destFolder
-    this.sourceRoot(path.join(__dirname, './templates/'))
-
-    // all files in the templates sub-folder will be copied to destFolder, except files with underscore
-    if (true) {
-      this.fs.copyTpl(
-        this.templatePath('**/*'),
-        this.destinationPath(destFolder),
-        this.props,
-        {},
-        { globOptions: { ignore: ['**/_*.*'] } }
-      )
-    }
   }
 
   install() {
@@ -297,9 +249,6 @@ class CommerceEventsGenerator extends Generator {
 }
 
 async function promptForActionName (actionPurpose, defaultValue) {
-  // if (actionPurpose == undefined && defaultValue == undefined) {
-  //   return
-  // }
 
   let actionName = defaultValue
   if (true) {
