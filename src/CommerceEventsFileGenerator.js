@@ -53,7 +53,7 @@ const { Core } = require('@adobe/aio-sdk')`,
     this.sourceRoot(path.join(__dirname, '.'))
 
     this.addAction(this.props.actionName, this.props.srcFolder, {
-      testFile: './templates/index.js',
+      // testFile: './templates/index.js',
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
     //   e2eTestFile: commonTemplates['stub-action.e2e'],
