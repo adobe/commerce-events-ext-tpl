@@ -3,6 +3,7 @@ const path = require('path')
 const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
+const fs = require('fs');
 
 // const { constants, utils } = require('@adobe/generator-app-common-lib')
 const { constants, utils } = require('@askayastha/generator-app-common-lib')
@@ -20,6 +21,9 @@ const CONSOLE_API_KEYS = {
   prod: 'aio-cli-console-auth',
   stage: 'aio-cli-console-auth-stage'
 }
+
+const Plugins = require('@oclif/plugin-plugins')
+const { Config } = require('@oclif/core')
 
 /*
 'initializing',
@@ -117,6 +121,7 @@ class CommerceEventsGenerator extends Generator {
     // Check for event provider in the Magento instance
     var skipAnswer = await this.prompt(skipPrechecksQuestion);
     var providerIdConfig;
+    const spinner = ora()
 
     if (!skipAnswer.skipPrechecks) {
       do {
@@ -136,7 +141,7 @@ class CommerceEventsGenerator extends Generator {
         }
 
         // this.log("URL: " + configCheckURL)
-        const spinner = ora()
+        // const spinner = ora()
         try {
           spinner.start("Checking event provider configuration...")
           const response = await fetch(checkEventProviderStoreApiEndpoint, {
@@ -208,13 +213,63 @@ class CommerceEventsGenerator extends Generator {
 
       this.props['eventCodes'] = eventCodesPrompt.eventCodes
 
-      this.log(pluginExtensionInfo)
-      var answer = await this.prompt({
-        type: "confirm",
-        name: "installExtension",
-        message: "Do you want to install aio-cli-plugin-extension?",
-        default: false
-      })
+      // this.log(pluginExtensionInfo)
+      
+      /**
+       * Plugin installation
+       */
+      const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
+      const pluginName = '@adobe/aio-cli-plugin-extension';
+      const pluginsRegistry = new Plugins.default(oclifConfig);
+
+      const plugins = await pluginsRegistry.list();
+      const isInstalled = plugins.some(plugin => plugin.name == pluginName)
+
+      // Nothing to do here, the plugin is already installed
+      if (isInstalled) {
+        spinner.info('aio-cli-plugin-extension is already installed. Skipping related dialog.')
+      } else {
+        
+        this.log(pluginExtensionInfo)
+        const answer = await this.prompt({
+          type: "confirm",
+          name: "installExtension",
+          message: "Do you want to subscribe to specified events automatically during deploy phase? This will install aio-cli-plugin-extension.",
+          default: false
+        })
+
+        if (answer['installExtension']) {
+          process.stdout.write('Installing plugin @adobe/aio-cli-plugin-extension...');
+          const originalYarnFork = pluginsRegistry.yarn.fork
+
+          try {
+            const silentFork = function (modulePath, args = [], options = {}) {
+              options.stdio = 'ignore'
+              return new Promise((resolve, reject) => {
+                const { fork } = require('child_process');
+                const forked = fork(modulePath, args, options);
+                forked.on('exit', (code) => {
+                    if (code === 0) {
+                      resolve();
+                    }
+                    else {
+                      reject(new Error(`yarn ${args.join(' ')} exited with code ${code}`));
+                    }
+                });
+              });
+            }
+
+            pluginsRegistry.yarn.fork = silentFork
+            await pluginsRegistry.install(pluginName)
+            pluginsRegistry.yarn.fork = originalYarnFork
+            process.stdout.write("Done\n")
+          } catch (error) {
+            pluginsRegistry.yarn.fork = originalYarnFork
+            this.log('Error: ' + error)
+            process.stdout.write(error + "\n")
+          }
+        }
+      }
     }
 
     this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
@@ -236,7 +291,8 @@ class CommerceEventsGenerator extends Generator {
       'action-folder': this.actionFolder,
       'config-path': this.configPath,
       'full-key-to-manifest': this.keyToManifest,
-      'action-name': this.props.actionName
+      'action-name': this.props.actionName,
+      'src-folder': this.props.srcFolder
     })
   }
 
