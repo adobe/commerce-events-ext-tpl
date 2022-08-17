@@ -88,7 +88,8 @@ class CommerceEventsGenerator extends Generator {
         message: "Enter Store URL:",
         store: true,
         validate: function(store_url) {
-          const valid_url = /^(http|https):\/\/[a-zA-Z0-9@:%._\\+~#?&//=]*$/.test(store_url)
+          // const valid_url = /^(http|https):\/\/[a-zA-Z0-9@:%._\\+~#?&//=]*$/.test(store_url)
+          const valid_url = /^(http|https):\/\/.*$/.test(store_url)
 
           if (valid_url) {
             return true
@@ -151,14 +152,18 @@ class CommerceEventsGenerator extends Generator {
           if (response.ok) {
             const content = await response.json()
             const jsonObj = JSON.parse(JSON.stringify(content))
+            providerIdConfig = jsonObj.provider_id_configured
       
             if (jsonObj.status === 'ok') {
               spinner.succeed(`Verified Configuration for Event Provider\n`)
-              providerIdConfig = jsonObj.provider_id_configured
+              // providerIdConfig = jsonObj.provider_id_configured
               // this.log(providerIdConfig)
               break
             } else {
               spinner.fail(`Verified Configuration for Event Provider`)
+              if (providerIdConfig == "") {
+                spinner.info("Adobe I/O Event Provider ID Not Found")
+              }
               this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)) + '\n');
       
               var answer = await this.prompt([
@@ -171,33 +176,35 @@ class CommerceEventsGenerator extends Generator {
               ])
             }
           } else {
+            spinner.fail(`Verified Configuration for Event Provider`)
             const content = await response.json()
             const jsonObj = JSON.parse(JSON.stringify(content))
       
-            // this.log(jsonObj.message)
+            this.log('\n' + jsonObj.message)
             // this.log(error.message)
             var answer = await this.prompt({
               type: "confirm",
               name: "retry",
               message: "Retry again?",
-              default: false
+              default: true
             })
             answers.hasIntegrationTokens = false
             }
         } catch (error) {
+          spinner.fail(`Verified Configuration for Event Provider`)
           this.log(error.message)
           var answer = await this.prompt({
             type: "confirm",
             name: "retry",
             message: "Retry again?",
-            default: false
+            default: true
           })
           answers.hasIntegrationTokens = false
         }
       } while (answer?.retry);
     }
     
-    if (providerIdConfig != undefined) {
+    if (!(providerIdConfig == undefined || providerIdConfig == "")) {
       const eventsClient = await getEventsClient()
       const eventCodes = await findEventCodesForProviderId(eventsClient, providerIdConfig)
       

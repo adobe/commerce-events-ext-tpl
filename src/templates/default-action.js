@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-// Replace the code below to change the default sample action
+// Replace the code below to change the default sample action (<%= actionName %>)
 var request = require('request');
 
 async function main (params) {
