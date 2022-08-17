@@ -3,7 +3,10 @@ const path = require('path')
 const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
-const fs = require('fs');
+const fs = require('fs')
+const inquirer = require('inquirer')
+const Plugins = require('@oclif/plugin-plugins')
+const { Config } = require('@oclif/core')
 
 // const { constants, utils } = require('@adobe/generator-app-common-lib')
 const { constants, utils } = require('@askayastha/generator-app-common-lib')
@@ -13,17 +16,15 @@ const { getToken, context } = require('@adobe/aio-lib-ims')
 const { getCliEnv } = require('@adobe/aio-lib-env')
 const { CLI } = require('@adobe/aio-lib-ims/src/context')
 const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
+
 const commerceFileGenerator = require('./CommerceEventsFileGenerator')
 const { templateInfo, pluginExtensionInfo, promptDocs } = require('./templates/prompts')
-const inquirer = require('inquirer');
 
+const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
 const CONSOLE_API_KEYS = {
   prod: 'aio-cli-console-auth',
   stage: 'aio-cli-console-auth-stage'
 }
-
-const Plugins = require('@oclif/plugin-plugins')
-const { Config } = require('@oclif/core')
 
 /*
 'initializing',
@@ -88,7 +89,6 @@ class CommerceEventsGenerator extends Generator {
         message: "Enter Store URL:",
         store: true,
         validate: function(store_url) {
-          // const valid_url = /^(http|https):\/\/[a-zA-Z0-9@:%._\\+~#?&//=]*$/.test(store_url)
           const valid_url = /^(http|https):\/\/.*$/.test(store_url)
 
           if (valid_url) {
@@ -134,8 +134,7 @@ class CommerceEventsGenerator extends Generator {
 
         } while (!answers.hasIntegrationTokens);
 
-        const checkEventProviderApiEndpoint = "/rest/V1/adobe_io_events/check_configuration"
-        const checkEventProviderStoreApiEndpoint = answers.storeURL + checkEventProviderApiEndpoint
+        const CHECK_EVENTS_CONFIG_API = path.join(answers.storeURL, CHECK_EVENTS_CONFIG_ENDPOINT)
         const headers = {
           'Authorization': `Bearer ${answers.accessToken}`,
           'Content-Type': 'application/json'
@@ -145,7 +144,7 @@ class CommerceEventsGenerator extends Generator {
         // const spinner = ora()
         try {
           spinner.start("Checking event provider configuration...")
-          const response = await fetch(checkEventProviderStoreApiEndpoint, {
+          const response = await fetch(CHECK_EVENTS_CONFIG_API, {
             method: 'get',
             headers: headers
           })
