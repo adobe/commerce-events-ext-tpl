@@ -41,20 +41,13 @@ class MainGenerator extends Generator {
   constructor (args, opts) {
     super(args, opts)
 
-    // options are inputs from CLI or yeoman parent generator
-    // this.option('src-folder', { type: String, default: path.resolve(__dirname, './templates/default-action.js') })
-    // this.option('src-folder', { type: String, default: './templates/default-action.js' })
-    // this.option('dest-folder', { type: String, default: '.' })
-
     // props is used by the template later on
     this.props = {
-      // srcFolder: this.options['src-folder'],
-      // destFolder: this.options['dest-folder'],
       dirName: path.basename(process.cwd())
     }
 
     // Options are inputs from CLI or yeoman parent generator
-    this.option('skip-prompt', { default: true })
+    this.option('skip-prompt', { default: false })
   }
 
   initializing () {
@@ -146,7 +139,6 @@ class MainGenerator extends Generator {
     }
     
     // Prompt to setup event codes in the app.config.yaml file
-    // if (!(providerIdConfig == undefined || providerIdConfig == "" || !providerIdValid)) {
     if (configStatus) {
       const eventsClient = await this._getEventsClient()
       const eventCodes = await this._fetchEventCodesForProviderId(eventsClient, providerIdConfig)
@@ -236,7 +228,6 @@ class MainGenerator extends Generator {
       })
 
       if (answer['installExtension']) {
-        // process.stdout.write('Installing plugin @adobe/aio-cli-plugin-extension...')
         spinner.start(`Installing plugin ${pluginName}...`)
         const originalYarnFork = pluginsRegistry.yarn.fork
 
@@ -260,14 +251,12 @@ class MainGenerator extends Generator {
           pluginsRegistry.yarn.fork = silentFork
           await pluginsRegistry.install(pluginName)
           pluginsRegistry.yarn.fork = originalYarnFork
-          // process.stdout.write("Done\n")
           spinner.succeed(`Installed plugin ${pluginName}...`)
           spinner.info(`Please uninstall ${pluginName} to remove Webhook Auto Subscription capability.`)
         
         } catch (error) {
           pluginsRegistry.yarn.fork = originalYarnFork
           this.log('Error: ' + error)
-          // process.stdout.write(error + "\n")
           spinner.stop()
         }
       }
@@ -282,32 +271,29 @@ class MainGenerator extends Generator {
    */
   async _promptForActionName (actionPurpose, defaultValue) {
     let actionName = defaultValue
-    if (true) {
-      const promptProps = await this.prompt([
-        {
-          type: 'input',
-          name: 'actionName',
-          message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
-          default: actionName,
-          // when: !this.options['skip-prompt'],
-          validate (input) {
-          // must be a valid openwhisk action name, this is a simplified set see:
-          // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
-            const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
-            if (valid.test(input)) {
-              return true
-            }
-            return `'${input}' is not a valid action name, please make sure that:
-                    The name has at least 3 characters or less than 33 characters.
-                    The first character is an alphanumeric character.
-                    The subsequent characters are alphanumeric.
-                    The last character isn't a space.
-                    Note: characters can only be split by '-'.`
-          }
+
+    const promptProps = await this.prompt({
+      type: 'input',
+      name: 'actionName',
+      message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
+      default: actionName,
+      when: !this.options['skip-prompt'],
+      validate (input) {
+      // Must be a valid openwhisk action name, this is a simplified set see:
+      // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
+        const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
+        if (valid.test(input)) {
+          return true
         }
-      ])
-      actionName = promptProps.actionName
-    }
+        return `'${input}' is not a valid action name, please make sure that:
+                The name has at least 3 characters or less than 33 characters.
+                The first character is an alphanumeric character.
+                The subsequent characters are alphanumeric.
+                The last character isn't a space.
+                Note: characters can only be split by '-'.`
+      }
+    })
+    actionName = promptProps.actionName
   
     return actionName
   }
@@ -318,7 +304,7 @@ class MainGenerator extends Generator {
    * @returns {*} - event api client from sdk
    */
   async _getEventsClient () {
-    // load console configuration from .aio and .env files
+    // Load console configuration from .aio and .env files
     const projectConfig = coreConfig.get('project')
     if (!projectConfig) {
       throw new Error('Incomplete .aio configuration, please import a valid Adobe Developer Console configuration via `aio app use` first.')
@@ -329,7 +315,7 @@ class MainGenerator extends Generator {
     const workspace = { name: projectConfig.workspace.name, id: projectConfig.workspace.id }
   
     const env = getCliEnv()
-    await context.setCli({ 'cli.bare-output': true }, false) // set this globally
+    await context.setCli({ 'cli.bare-output': true }, false) // Set this globally
     const accessToken = await getToken(CLI)
     const cliObject = await context.getCli()
     const apiKey = CONSOLE_API_KEYS[env]
