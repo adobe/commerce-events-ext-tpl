@@ -17,7 +17,7 @@ const { getCliEnv } = require('@adobe/aio-lib-env')
 const { CLI } = require('@adobe/aio-lib-ims/src/context')
 const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
 
-const commerceFileGenerator = require('./CommerceEventsFileGenerator')
+const commerceEventsFileGenerator = require('./file-generator')
 const { briefOverviews, promptDocs, skipPrechecksPrompt, checkEventsConfigPrompt, retryPrompt } = require('./prompts')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
@@ -43,13 +43,13 @@ class CommerceEventsGenerator extends Generator {
 
     // options are inputs from CLI or yeoman parent generator
     // this.option('src-folder', { type: String, default: path.resolve(__dirname, './templates/default-action.js') })
-    this.option('src-folder', { type: String, default: './templates/default-action.js' })
-    this.option('dest-folder', { type: String, default: '.' })
+    // this.option('src-folder', { type: String, default: './templates/default-action.js' })
+    // this.option('dest-folder', { type: String, default: '.' })
 
     // props is used by the template later on
     this.props = {
-      srcFolder: this.options['src-folder'],
-      destFolder: this.options['dest-folder'],
+      // srcFolder: this.options['src-folder'],
+      // destFolder: this.options['dest-folder'],
       dirName: path.basename(process.cwd())
     }
 
@@ -63,18 +63,18 @@ class CommerceEventsGenerator extends Generator {
     this.actionFolder = path.join(this.appFolder, 'actions')
     this.configPath = path.join(this.appFolder, 'app.config.yaml')
     this.keyToManifest = 'application.' + constants.runtimeManifestKey
-
-    this.log(briefOverviews['templateInfo'])
   }
 
   async prompting () {
-    var answer = await this.prompt(skipPrechecksPrompt)
     var retryAnswer
     var configStatus = false
     var providerIdConfig
     const spinner = ora()
 
     // Prompts to verify the Event Provider configuration
+    this.log(briefOverviews['templateInfo'])
+    
+    var answer = await this.prompt(skipPrechecksPrompt)
     if (!answer.skipPrechecks) {
       do {
         do {
@@ -175,7 +175,7 @@ class CommerceEventsGenerator extends Generator {
   install () {
     // Compose this template with a helper Commerce file generator
     this.composeWith({
-      Generator: commerceFileGenerator,
+      Generator: commerceEventsFileGenerator,
       path: 'unknown'
     },
     {

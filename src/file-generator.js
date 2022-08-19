@@ -12,7 +12,8 @@ governing permissions and limitations under the License.
 const path = require('path')
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
-const GENERIC_ACTION_NAME = 'generic'
+
+const commerceTemplates = require('./templates')
 
 class CommerceEventsFileGenerator extends ActionGenerator {
   constructor (args, opts) {
@@ -42,7 +43,6 @@ const { Core } = require('@adobe/aio-sdk')`,
     }`
     }
     this.props.actionName = this.options['action-name']
-    this.props.srcFolder = this.options['src-folder']
   }
 
   // async prompting () {
@@ -52,11 +52,11 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
-    this.addAction(this.props.actionName, this.props.srcFolder, {
-      // testFile: './templates/index.js',
+    this.addAction(this.props.actionName, commerceTemplates['stub-action'], {
+      // testFile: commerceTemplates['stub-action.test'],
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
-    //   e2eTestFile: commonTemplates['stub-action.e2e'],
+      // e2eTestFile: commerceTemplates['stub-action.e2e'],
       tplContext: this.props,
       dependencies: {
         '@adobe/aio-sdk': commonDependencyVersions['@adobe/aio-sdk'],
