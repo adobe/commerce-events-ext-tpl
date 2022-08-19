@@ -4,7 +4,7 @@ const chalk = require('chalk')
 const ora = require('ora')
 const fetch = require('node-fetch')
 const fs = require('fs')
-const inquirer = require('inquirer')
+// const inquirer = require('inquirer')
 const Plugins = require('@oclif/plugin-plugins')
 const { Config } = require('@oclif/core')
 
@@ -18,7 +18,7 @@ const { CLI } = require('@adobe/aio-lib-ims/src/context')
 const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
 
 const commerceFileGenerator = require('./CommerceEventsFileGenerator')
-const { templateInfo, pluginExtensionInfo, promptDocs } = require('./templates/prompts')
+const { briefOverviews, promptDocs, skipPrechecksPrompt, checkEventsConfigPrompt, retryPrompt } = require('./prompts')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
 const CONSOLE_API_KEYS = {
@@ -46,92 +46,42 @@ class CommerceEventsGenerator extends Generator {
     this.option('src-folder', { type: String, default: './templates/default-action.js' })
     this.option('dest-folder', { type: String, default: '.' })
 
-    // props are used by templates
+    // props is used by the template later on
     this.props = {
       srcFolder: this.options['src-folder'],
       destFolder: this.options['dest-folder'],
       dirName: path.basename(process.cwd())
     }
 
-    // options are inputs from CLI or yeoman parent generator
+    // Options are inputs from CLI or yeoman parent generator
     this.option('skip-prompt', { default: true })
   }
 
   initializing () {
-    // all paths are relative to root
+    // All paths are relative to root
     this.appFolder = '.'
     this.actionFolder = path.join(this.appFolder, 'actions')
     this.configPath = path.join(this.appFolder, 'app.config.yaml')
     this.keyToManifest = 'application.' + constants.runtimeManifestKey
 
-    this.log(templateInfo)
+    this.log(briefOverviews['templateInfo'])
   }
 
-  async prompting() {
-
-    const skipPrechecksQuestion = {
-      type: "confirm",
-        name: "skipPrechecks",
-        message: "Do you want to skip the questionnaire and create your project only?",
-        default: false
-    }
-
-    const questions = [
-      {
-        type: "confirm",
-        name: "hasIntegrationTokens",
-        message: "Do you have your Commerce integration details?",
-        default: false
-      },
-      {
-        type: "input",
-        name: "storeURL",
-        message: "Enter Store URL:",
-        store: true,
-        validate: function(store_url) {
-          const valid_url = /^(http|https):\/\/.*$/.test(store_url)
-
-          if (valid_url) {
-            return true
-          }
-          return "Invalid Web URL!"
-        },
-        when(answers) {
-          return answers.hasIntegrationTokens;
-        }
-      },
-      {
-        type: "input",
-        name: "accessToken",
-        message: "Enter Access Token:",
-        store: true,
-        validate: function(access_token) {
-          const valid_access_token = /^[a-zA-Z0-9]+$/.test(access_token)
-
-          if (valid_access_token) {
-            return true
-          }
-          return "Invalid Access Token!"
-        },
-        when(answers) {
-          return answers.hasIntegrationTokens;
-        }
-      }
-    ];
-
-    // Check for event provider in the Magento instance
-    var skipAnswer = await this.prompt(skipPrechecksQuestion);
-    var providerIdConfig;
+  async prompting () {
+    var answer = await this.prompt(skipPrechecksPrompt)
+    var retryAnswer
+    var configStatus = false
+    var providerIdConfig
     const spinner = ora()
 
-    if (!skipAnswer.skipPrechecks) {
+    // Prompts to verify the Event Provider configuration
+    if (!answer.skipPrechecks) {
       do {
         do {
-          var answers = await this.prompt(questions);
+          var answers = await this.prompt(checkEventsConfigPrompt)
           if ('hasIntegrationTokens' in answers && !answers.hasIntegrationTokens) {
-            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)) + '\n');
+            this.log(chalk.blue(chalk.bold(`Please refer to:\n  -> ${promptDocs['checkIntegrationTokens']}`)) + '\n')
           }
-
         } while (!answers.hasIntegrationTokens);
 
         const CHECK_EVENTS_CONFIG_API = path.join(answers.storeURL, CHECK_EVENTS_CONFIG_ENDPOINT)
@@ -140,75 +90,67 @@ class CommerceEventsGenerator extends Generator {
           'Content-Type': 'application/json'
         }
 
-        // this.log("URL: " + configCheckURL)
-        // const spinner = ora()
         try {
-          spinner.start("Checking event provider configuration...")
+          spinner.start("Checking Adobe I/O Event Provider configuration...")
           const response = await fetch(CHECK_EVENTS_CONFIG_API, {
             method: 'get',
             headers: headers
           })
           if (response.ok) {
             const content = await response.json()
-            const jsonObj = JSON.parse(JSON.stringify(content))
-            providerIdConfig = jsonObj.provider_id_configured
+            const responseObj = JSON.parse(JSON.stringify(content))
+            const serviceAccountConfig = responseObj.technical_service_account_configured
+            const serviceAccountConnect = responseObj.technical_service_account_can_connect_to_io_events
+            providerIdConfig = responseObj.provider_id_configured
+            const providerIdValid = responseObj.provider_id_valid
       
-            if (jsonObj.status === 'ok') {
-              spinner.succeed(`Verified Configuration for Event Provider\n`)
-              // providerIdConfig = jsonObj.provider_id_configured
-              // this.log(providerIdConfig)
+            // Success Case: Commerce instance is configured correctly for Adobe I/O Events
+            if (responseObj.status === 'ok') {
+              configStatus = true
+              spinner.succeed(`Verified configuration for Adobe I/O Event Provider\n`)
               break
+            
             } else {
-              spinner.fail(`Verified Configuration for Event Provider`)
-              if (providerIdConfig == "") {
-                spinner.info("Adobe I/O Event Provider ID Not Found")
+              // Failure Case #1: Event Provider ID is not configured correctly for Adobe I/O Events
+              spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
+              if (!serviceAccountConfig) {
+                spinner.warn(`Adobe I/O Service Account Private Key not valid`)
+              } else if (!serviceAccountConnect) {
+                spinner.warn(`Adobe I/O Workspace Configuration not valid`)
+              } else if (providerIdConfig == "") {
+                spinner.warn(`Adobe I/O Event Provider ID not found`)
+              } else if (!providerIdValid) {
+                spinner.warn(`Adobe I/O Event Provider ID '${providerIdConfig}' doesn't exist in your organization`)
               }
               this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)) + '\n');
-      
-              var answer = await this.prompt([
-                {
-                  type: "confirm",
-                  name: "retry",
-                  message: "Retry again?",
-                  default: false
-                }
-              ])
+              retryAnswer = await this.prompt(retryPrompt)
             }
           } else {
-            spinner.fail(`Verified Configuration for Event Provider`)
+            // Failure Case #2: Something is wrong with the Commerce Integration access token
+            spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
             const content = await response.json()
-            const jsonObj = JSON.parse(JSON.stringify(content))
+            const responseObj = JSON.parse(JSON.stringify(content))
       
-            this.log('\n' + jsonObj.message)
-            // this.log(error.message)
-            var answer = await this.prompt({
-              type: "confirm",
-              name: "retry",
-              message: "Retry again?",
-              default: true
-            })
+            spinner.warn(responseObj.message)
+            retryAnswer = await this.prompt(retryPrompt)
             answers.hasIntegrationTokens = false
             }
         } catch (error) {
-          spinner.fail(`Verified Configuration for Event Provider`)
-          this.log(error.message)
-          var answer = await this.prompt({
-            type: "confirm",
-            name: "retry",
-            message: "Retry again?",
-            default: true
-          })
+          // Failure Case #3: Any other errors
+          spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
+          spinner.warn(error.message)
+          retryAnswer = await this.prompt(retryPrompt)
           answers.hasIntegrationTokens = false
         }
-      } while (answer?.retry);
+      } while (retryAnswer?.retry);
     }
     
-    if (!(providerIdConfig == undefined || providerIdConfig == "")) {
-      const eventsClient = await getEventsClient()
-      const eventCodes = await findEventCodesForProviderId(eventsClient, providerIdConfig)
-      
+    // Prompt to setup event codes in the app.config.yaml file
+    // if (!(providerIdConfig == undefined || providerIdConfig == "" || !providerIdValid)) {
+    if (configStatus) {
+      const eventsClient = await this._getEventsClient()
+      const eventCodes = await this._fetchEventCodesForProviderId(eventsClient, providerIdConfig)
       const choices = eventCodes.map(code => { return { name: code } })
-      // this.log(choices)
 
       const eventCodesPrompt = await this.prompt({
         type: "checkbox",
@@ -218,81 +160,26 @@ class CommerceEventsGenerator extends Generator {
       })
 
       this.props['eventCodes'] = eventCodesPrompt.eventCodes
-
-      // this.log(pluginExtensionInfo)
       
-      /**
-       * Plugin installation
-       */
-      const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
-      const pluginName = '@adobe/aio-cli-plugin-extension';
-      const pluginsRegistry = new Plugins.default(oclifConfig);
-
-      const plugins = await pluginsRegistry.list();
-      const isInstalled = plugins.some(plugin => plugin.name == pluginName)
-
-      // Nothing to do here, the plugin is already installed
-      if (isInstalled) {
-        spinner.info('aio-cli-plugin-extension is already installed. Skipping related dialog.')
-      } else {
-        
-        this.log(pluginExtensionInfo)
-        const answer = await this.prompt({
-          type: "confirm",
-          name: "installExtension",
-          message: "Do you want to subscribe to specified events automatically during deploy phase? This will install aio-cli-plugin-extension.",
-          default: false
-        })
-
-        if (answer['installExtension']) {
-          process.stdout.write('Installing plugin @adobe/aio-cli-plugin-extension...');
-          const originalYarnFork = pluginsRegistry.yarn.fork
-
-          try {
-            const silentFork = function (modulePath, args = [], options = {}) {
-              options.stdio = 'ignore'
-              return new Promise((resolve, reject) => {
-                const { fork } = require('child_process');
-                const forked = fork(modulePath, args, options);
-                forked.on('exit', (code) => {
-                    if (code === 0) {
-                      resolve();
-                    }
-                    else {
-                      reject(new Error(`yarn ${args.join(' ')} exited with code ${code}`));
-                    }
-                });
-              });
-            }
-
-            pluginsRegistry.yarn.fork = silentFork
-            await pluginsRegistry.install(pluginName)
-            pluginsRegistry.yarn.fork = originalYarnFork
-            process.stdout.write("Done\n")
-          } catch (error) {
-            pluginsRegistry.yarn.fork = originalYarnFork
-            this.log('Error: ' + error)
-            process.stdout.write(error + "\n")
-          }
-        }
-      }
+      await this._installPluginExtension()
     }
 
-    this.props.actionName = await promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    // Prompt to setup App Builder actions
+    this.props.actionName = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
   }
 
-  writing() {
+  writing () {
     utils.writeKeyAppConfig(this, 'application.actions', path.relative(this.appFolder, this.actionFolder))
   }
 
-  install() {
-    // generate the generic action
+  install () {
+    // Compose this template with a helper Commerce file generator
     this.composeWith({
       Generator: commerceFileGenerator,
       path: 'unknown'
     },
     {
-      // forward needed args
+      // Forward needed args
       'skip-prompt': true, // do not ask for action name
       'action-folder': this.actionFolder,
       'config-path': this.configPath,
@@ -302,81 +189,166 @@ class CommerceEventsGenerator extends Generator {
     })
   }
 
-  end() {
+  end () {
     const keyToEventCodes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
-    // this.log(keyToEventCodes)
     utils.writeKeyAppConfig(this, keyToEventCodes, this.props['eventCodes'])
   }
 
-}
+  /**
+   * Prompts for installing aio-cli-plugin-extension if not already installed
+   */
+  async _installPluginExtension () {
+    const spinner = ora()
+    const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
+    const pluginName = '@adobe/aio-cli-plugin-extension'
+    const pluginsRegistry = new Plugins.default(oclifConfig)
 
-async function promptForActionName (actionPurpose, defaultValue) {
+    const plugins = await pluginsRegistry.list()
+    const isInstalled = plugins.some(plugin => plugin.name == pluginName)
 
-  let actionName = defaultValue
-  if (true) {
-    const promptProps = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'actionName',
-        message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
-        default: actionName,
-        // when: !this.options['skip-prompt'],
-        validate (input) {
-        // must be a valid openwhisk action name, this is a simplified set see:
-        // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
-          const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
-          if (valid.test(input)) {
-            return true
+    // Nothing to do here, the plugin is already installed
+    if (isInstalled) {
+      spinner.info(`${pluginName} is already installed and lets you subscribe to specified events automatically during the deploy phase. Skipping related prompt.`)
+    } else {
+      this.log(briefOverviews['pluginExtensionInfo'])
+      const answer = await this.prompt({
+        type: "confirm",
+        name: "installExtension",
+        message: `Do you want to subscribe to specified events automatically during the deploy phase? This will install ${pluginName}.`,
+        default: false
+      })
+
+      if (answer['installExtension']) {
+        // process.stdout.write('Installing plugin @adobe/aio-cli-plugin-extension...')
+        spinner.start(`Installing plugin ${pluginName}...`)
+        const originalYarnFork = pluginsRegistry.yarn.fork
+
+        try {
+          const silentFork = function (modulePath, args = [], options = {}) {
+            options.stdio = 'ignore'
+            return new Promise((resolve, reject) => {
+              const { fork } = require('child_process')
+              const forked = fork(modulePath, args, options)
+              forked.on('exit', (code) => {
+                if (code === 0) {
+                  resolve()
+                }
+                else {
+                  reject(new Error(`yarn ${args.join(' ')} exited with code ${code}`))
+                }
+              })
+            })
           }
-          return `'${input}' is not a valid action name, please make sure that:
-                  The name has at least 3 characters or less than 33 characters.
-                  The first character is an alphanumeric character.
-                  The subsequent characters are alphanumeric.
-                  The last character isn't a space.
-                  Note: characters can only be split by '-'.`
+
+          pluginsRegistry.yarn.fork = silentFork
+          await pluginsRegistry.install(pluginName)
+          pluginsRegistry.yarn.fork = originalYarnFork
+          // process.stdout.write("Done\n")
+          spinner.succeed(`Installed plugin ${pluginName}...`)
+          spinner.info(`Please uninstall ${pluginName} to remove Webhook Auto Subscription capability.`)
+        
+        } catch (error) {
+          pluginsRegistry.yarn.fork = originalYarnFork
+          this.log('Error: ' + error)
+          // process.stdout.write(error + "\n")
+          spinner.stop()
         }
       }
-    ])
-    actionName = promptProps.actionName
+    }
   }
 
-  return actionName
-}
-
-async function getEventsClient() {
-  // load console configuration from .aio and .env files
-  const projectConfig = coreConfig.get('project')
-  if (!projectConfig) {
-    throw new Error('Incomplete .aio configuration, please import a valid Adobe Developer Console configuration via `aio app use` first.')
-  }
-
-  const orgId = projectConfig.org.id
-  const orgCode = projectConfig.org.ims_org_id
-  const workspace = { name: projectConfig.workspace.name, id: projectConfig.workspace.id }
-
-  const env = getCliEnv()
-  await context.setCli({ 'cli.bare-output': true }, false) // set this globally
-  const accessToken = await getToken(CLI)
-  const cliObject = await context.getCli()
-  const apiKey = CONSOLE_API_KEYS[env]
-  const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
-  const workspaceCreds = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
-  const client = await eventsSdk.init(orgCode, workspaceCreds.client_id, accessToken)
-
-  return client
-}
-
-async function findEventCodesForProviderId (client, providerId) {
-  const spinner = ora()
-  spinner.start('Fetching event codes...')
-  const providerInfo = await client.getAllEventMetadataForProvider(providerId)
-
-  const eventCodes = providerInfo._embedded.eventmetadata.map(e => e.event_code)
-  // const eventCodes = providerInfo._embedded.eventmetadata
-  spinner.stop()
+  /**
+   * Prompt for action name
+   *
+   * @param {string} actionPurpose - brief description of the action
+   * @param {string} defaultValue - default action name
+   */
+  async _promptForActionName (actionPurpose, defaultValue) {
+    let actionName = defaultValue
+    if (true) {
+      const promptProps = await this.prompt([
+        {
+          type: 'input',
+          name: 'actionName',
+          message: `We are about to create a new sample action that ${actionPurpose}.\nHow would you like to name this action?`,
+          default: actionName,
+          // when: !this.options['skip-prompt'],
+          validate (input) {
+          // must be a valid openwhisk action name, this is a simplified set see:
+          // https://github.com/apache/openwhisk/blob/master/docs/reference.md#entity-names
+            const valid = /^[a-zA-Z0-9][a-zA-Z0-9-]{2,31}$/
+            if (valid.test(input)) {
+              return true
+            }
+            return `'${input}' is not a valid action name, please make sure that:
+                    The name has at least 3 characters or less than 33 characters.
+                    The first character is an alphanumeric character.
+                    The subsequent characters are alphanumeric.
+                    The last character isn't a space.
+                    Note: characters can only be split by '-'.`
+          }
+        }
+      ])
+      actionName = promptProps.actionName
+    }
   
-  // this.log('Event provider id doesn\'t exist in your organization ' + orgId)
-  return eventCodes
+    return actionName
+  }
+  
+  /**
+   * Configures an event api client from sdk
+   *
+   * @returns {*} - event api client from sdk
+   */
+  async _getEventsClient () {
+    // load console configuration from .aio and .env files
+    const projectConfig = coreConfig.get('project')
+    if (!projectConfig) {
+      throw new Error('Incomplete .aio configuration, please import a valid Adobe Developer Console configuration via `aio app use` first.')
+    }
+  
+    const orgId = projectConfig.org.id
+    const orgCode = projectConfig.org.ims_org_id
+    const workspace = { name: projectConfig.workspace.name, id: projectConfig.workspace.id }
+  
+    const env = getCliEnv()
+    await context.setCli({ 'cli.bare-output': true }, false) // set this globally
+    const accessToken = await getToken(CLI)
+    const cliObject = await context.getCli()
+    const apiKey = CONSOLE_API_KEYS[env]
+    const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
+    const workspaceCreds = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
+    const client = await eventsSdk.init(orgCode, workspaceCreds.client_id, accessToken)
+  
+    return client
+  }
+  
+  /**
+   * Fetches event codes for an Event Provider ID
+   *
+   * @param {*} client - event api client from sdk
+   * @param {string} providerId - id of Event Provider
+   */
+  async _fetchEventCodesForProviderId (client, providerId) {
+    const spinner = ora()
+    spinner.start('Fetching event codes...')
+    try {
+      const providerInfo = await client.getAllEventMetadataForProvider(providerId)
+      const eventCodes = providerInfo._embedded.eventmetadata.map(e => e.event_code)
+      spinner.stop()
+  
+      return eventCodes
+    
+    } catch (error) {
+      this.log('\n' + error.message)
+      
+      if (error.code == 'ERROR_GET_ALL_EVENTMETADATA') {
+        spinner.warn(`Adobe I/O Event Provider ID '${providerId}' doesn't exist in your organization`)
+      }
+      this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)) + '\n');
+      process.exit(1)
+    }
+  }
 }
 
 module.exports = CommerceEventsGenerator
