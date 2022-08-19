@@ -12,7 +12,8 @@ governing permissions and limitations under the License.
 const path = require('path')
 
 commerceTemplates = {
-  'stub-action': path.resolve(__dirname, './stub-action.js'),
+  'stub-generic-action': path.resolve(__dirname, './stub-generic-action.js'),
+  'stub-slack-action': path.resolve(__dirname, './stub-slack-action.js'),
   // 'stub-action.test': path.resolve(__dirname, './stub-action.test.js'),
   // 'stub-action.e2e': path.resolve(__dirname, './stub-action.e2e.js'),
   // 'utils': path.resolve(__dirname, './utils.js'),

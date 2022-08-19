@@ -74,8 +74,8 @@ class CommerceEventsGenerator extends Generator {
     // Prompts to verify the Event Provider configuration
     this.log(briefOverviews['templateInfo'])
     
-    var answer = await this.prompt(skipPrechecksPrompt)
-    if (!answer.skipPrechecks) {
+    var firstAnswer = await this.prompt(skipPrechecksPrompt)
+    if (!firstAnswer.skipPrechecks) {
       do {
         do {
           var answers = await this.prompt(checkEventsConfigPrompt)
@@ -152,20 +152,36 @@ class CommerceEventsGenerator extends Generator {
       const eventCodes = await this._fetchEventCodesForProviderId(eventsClient, providerIdConfig)
       const choices = eventCodes.map(code => { return { name: code } })
 
-      const eventCodesPrompt = await this.prompt({
+      const checkBoxAnswer = await this.prompt({
         type: "checkbox",
         name: "eventCodes",
         message: "Select event codes of interest",
         choices: choices
       })
 
-      this.props['eventCodes'] = eventCodesPrompt.eventCodes
+      this.props['eventCodes'] = checkBoxAnswer.eventCodes
       
       await this._installPluginExtension()
     }
 
     // Prompt to setup App Builder actions
-    this.props.actionName = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    // this.props.actionName = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    const listAnswer = await this.prompt({
+      type: 'list',
+      name: 'actionType',
+      message: 'Which action do you want?',
+      choices: ['Generic', 'Slack Demo'],
+      filter(val) {
+        return val.toLowerCase();
+      },
+    })
+
+    if (listAnswer.actionType == 'generic') {
+      this.props.actionName = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+    } else if (listAnswer.actionType == 'slack demo') {
+      this.props.actionName = await this._promptForActionName('showcases how to send Slack notifications', 'slack')
+    }
+    this.props.actionType = listAnswer.actionType
   }
 
   writing () {
@@ -185,7 +201,7 @@ class CommerceEventsGenerator extends Generator {
       'config-path': this.configPath,
       'full-key-to-manifest': this.keyToManifest,
       'action-name': this.props.actionName,
-      'src-folder': this.props.srcFolder
+      'action-type': this.props.actionType
     })
   }
 

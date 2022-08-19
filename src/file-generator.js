@@ -43,6 +43,7 @@ const { Core } = require('@adobe/aio-sdk')`,
     }`
     }
     this.props.actionName = this.options['action-name']
+    this.props.actionType = this.options['action-type']
   }
 
   // async prompting () {
@@ -52,7 +53,14 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
-    this.addAction(this.props.actionName, commerceTemplates['stub-action'], {
+    var stubActionPath
+    if (this.props.actionType == 'generic') {
+      stubActionPath = commerceTemplates['stub-generic-action']
+    } else if (this.props.actionType == 'slack demo') {
+      stubActionPath = commerceTemplates['stub-slack-action']
+    }
+    
+    this.addAction(this.props.actionName, stubActionPath, {
       // testFile: commerceTemplates['stub-action.test'],
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
