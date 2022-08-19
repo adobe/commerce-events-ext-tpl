@@ -1,6 +1,6 @@
 /*
  * Copyright 2022 Adobe. All rights reserved.
- * This file is licensed to you under the Apache License, Version 2.0 (the "License");
+ * This file is licensed to you under the Apache License, Version 2.0 (the "License")
  * you may not use this file except in compliance with the License. You may obtain a copy
  * of the License at http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -10,20 +10,21 @@
  * governing permissions and limitations under the License.
  */
 
-// Replace the code below to change the default sample action (<%= actionName %>)
+const request = require('request')
 
-/* default slackwebhook and channel add yours here and replace the TODO below */
-/* this is a sample action for how to receive event and sent a message to slack */
-var request = require('request');
-
-/* default slackwebhook and channel add yours here and replace the TODO below */
-var slackWebhook = "";
-var slackChannel = "webhooks";
+/**
+ * This is a sample action for how to receive event and sent a message to Slack.
+ * Add your Slack Webhook/Channel here.
+ * Replace the code below to change the Slack sample action (<%= actionName %>)
+ * Setup Slack Webhook: https://slack.com/help/articles/115005265063-Incoming-webhooks-for-Slack
+*/
+var slackWebhook = ""
+var slackChannel = "webhooks"
 
 async function main (params) {
   
-  /* print event detail */
-  console.log('in main + event detail: ', params.event);
+  /* Print event detail */
+  console.log('in main + event detail: ', params.event)
 
   var returnObject = {
     statusCode: 200,
@@ -31,32 +32,31 @@ async function main (params) {
       'Content-Type': 'application/json'
     },
     body: ""
-  };
+  }
 
-  /* handle the challenge */
+  /* Handle the challenge */
   if (params.challenge) {
 
-    console.log('Returning challenge: ' + params.challenge);
+    console.log('Returning challenge: ' + params.challenge)
 
     returnObject.body = new Buffer(JSON.stringify({
       "challenge": params.challenge
-    })).toString('base64');
+    })).toString('base64')
 
-    return returnObject;
+    return returnObject
 
   } else {
-
-    /* we need it to run asynchronously, so we are returning a Promise */
+    /* We need it to run asynchronously, so we are returning a Promise */
     return new Promise(function (resolve, reject) {
 
-      // var slackMessage = " Event received: " + JSON.stringify(params);
-      var paramsData = JSON.parse(JSON.stringify(params));
+      // var slackMessage = " Event received: " + JSON.stringify(params)
+      var paramsData = JSON.parse(JSON.stringify(params))
       var slackMessage = ""
 
       if (paramsData.type == "com.adobe.commerce.product.created") {
-        slackMessage = "PRODUCT CREATED!";
+        slackMessage = "PRODUCT CREATED!"
       } else if (paramsData.type == "com.adobe.commerce.product.updated") {
-        slackMessage = "PRODUCT UPDATED!";
+        slackMessage = "PRODUCT UPDATED!"
       }
       
       var payload = {
@@ -64,33 +64,31 @@ async function main (params) {
         "username": "incoming-webhook",
         "text": slackMessage,
         "mrkdwn": true,
-      };
+      }
 
       var options = {
         method: 'POST',
         url: slackWebhook,
-        headers:
-            { 'Content-type': 'application/json' },
+        headers: {
+          'Content-type': 'application/json'
+        },
         body: JSON.stringify(payload)
-      };
+      }
 
       request(options, function (error, response, body) {
         if (error) {
-          console.log("ERROR: fail to post " + response);
-          reject(error);
+          console.log("ERROR: fail to post " + response)
+          reject(error)
         } else {
-          console.log ("SUCCESS: posted to slack " + slackMessage);
+          console.log ("SUCCESS: posted to slack " + slackMessage)
           returnObject.body = new Buffer(JSON.stringify({
             "slackMessage": slackMessage
-          })).toString('base64');
+          })).toString('base64')
 
-          resolve(returnObject);
+          resolve(returnObject)
         }
-
-      });
-
-    });
-
+      })
+    })
   }
 }
 

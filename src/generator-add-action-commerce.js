@@ -15,7 +15,7 @@ const { commonDependencyVersions } = constants
 
 const commerceTemplates = require('./templates')
 
-class CommerceEventsFileGenerator extends ActionGenerator {
+class CommerceEventsActionGenerator extends ActionGenerator {
   constructor (args, opts) {
     super(args, opts)
     this.props = {
@@ -42,8 +42,9 @@ const { Core } = require('@adobe/aio-sdk')`,
       body: content
     }`
     }
-    this.props.actionName = this.options['action-name']
-    this.props.actionType = this.options['action-type']
+    this.props['actionName'] = this.options['action-name']
+    this.props['eventCodes'] = this.options['event-codes']
+    this.actionType = this.options['action-type']
   }
 
   // async prompting () {
@@ -54,9 +55,9 @@ const { Core } = require('@adobe/aio-sdk')`,
     this.sourceRoot(path.join(__dirname, '.'))
 
     var stubActionPath
-    if (this.props.actionType == 'generic') {
+    if (this.actionType == 'generic') {
       stubActionPath = commerceTemplates['stub-generic-action']
-    } else if (this.props.actionType == 'slack demo') {
+    } else if (this.actionType == 'slack demo') {
       stubActionPath = commerceTemplates['stub-slack-action']
     }
     
@@ -80,4 +81,4 @@ const { Core } = require('@adobe/aio-sdk')`,
   }
 }
 
-module.exports = CommerceEventsFileGenerator
+module.exports = CommerceEventsActionGenerator

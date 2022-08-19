@@ -17,7 +17,7 @@ const { getCliEnv } = require('@adobe/aio-lib-env')
 const { CLI } = require('@adobe/aio-lib-ims/src/context')
 const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
 
-const commerceEventsFileGenerator = require('./file-generator')
+const commerceGenerator = require('./generator-add-action-commerce')
 const { briefOverviews, promptDocs, skipPrechecksPrompt, checkEventsConfigPrompt, retryPrompt } = require('./prompts')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
@@ -37,7 +37,7 @@ const CONSOLE_API_KEYS = {
 'end'
 */
 
-class CommerceEventsGenerator extends Generator {
+class MainGenerator extends Generator {
   constructor (args, opts) {
     super(args, opts)
 
@@ -177,11 +177,11 @@ class CommerceEventsGenerator extends Generator {
     })
 
     if (listAnswer.actionType == 'generic') {
-      this.props.actionName = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
+      this.props['actionName'] = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
     } else if (listAnswer.actionType == 'slack demo') {
-      this.props.actionName = await this._promptForActionName('showcases how to send Slack notifications', 'slack')
+      this.props['actionName'] = await this._promptForActionName('showcases how to send Slack notifications', 'slack')
     }
-    this.props.actionType = listAnswer.actionType
+    this.props['actionType'] = listAnswer.actionType
   }
 
   writing () {
@@ -191,7 +191,7 @@ class CommerceEventsGenerator extends Generator {
   install () {
     // Compose this template with a helper Commerce file generator
     this.composeWith({
-      Generator: commerceEventsFileGenerator,
+      Generator: commerceGenerator,
       path: 'unknown'
     },
     {
@@ -200,8 +200,9 @@ class CommerceEventsGenerator extends Generator {
       'action-folder': this.actionFolder,
       'config-path': this.configPath,
       'full-key-to-manifest': this.keyToManifest,
-      'action-name': this.props.actionName,
-      'action-type': this.props.actionType
+      'action-name': this.props['actionName'],
+      'event-codes': this.props['eventCodes'],
+      'action-type': this.props['actionType']
     })
   }
 
@@ -367,4 +368,4 @@ class CommerceEventsGenerator extends Generator {
   }
 }
 
-module.exports = CommerceEventsGenerator
+module.exports = MainGenerator
