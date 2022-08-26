@@ -12,9 +12,10 @@ governing permissions and limitations under the License.
 const path = require('path')
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
-const GENERIC_ACTION_NAME = 'generic'
 
-class CommerceEventsFileGenerator extends ActionGenerator {
+const commerceTemplates = require('./templates')
+
+class CommerceEventsActionGenerator extends ActionGenerator {
   constructor (args, opts) {
     super(args, opts)
     this.props = {
@@ -41,8 +42,9 @@ const { Core } = require('@adobe/aio-sdk')`,
       body: content
     }`
     }
-    this.props.actionName = this.options['action-name']
-    this.props.srcFolder = this.options['src-folder']
+    this.props['actionName'] = this.options['action-name']
+    this.props['eventCodes'] = this.options['event-codes']
+    this.actionType = this.options['action-type']
   }
 
   // async prompting () {
@@ -52,11 +54,18 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
-    this.addAction(this.props.actionName, this.props.srcFolder, {
-      // testFile: './templates/index.js',
+    var stubActionPath
+    if (this.actionType == 'generic') {
+      stubActionPath = commerceTemplates['stub-generic-action']
+    } else if (this.actionType == 'slack demo') {
+      stubActionPath = commerceTemplates['stub-slack-action']
+    }
+    
+    this.addAction(this.props.actionName, stubActionPath, {
+      // testFile: commerceTemplates['stub-action.test'],
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
-    //   e2eTestFile: commonTemplates['stub-action.e2e'],
+      // e2eTestFile: commerceTemplates['stub-action.e2e'],
       tplContext: this.props,
       dependencies: {
         '@adobe/aio-sdk': commonDependencyVersions['@adobe/aio-sdk'],
@@ -72,4 +81,4 @@ const { Core } = require('@adobe/aio-sdk')`,
   }
 }
 
-module.exports = CommerceEventsFileGenerator
+module.exports = CommerceEventsActionGenerator
