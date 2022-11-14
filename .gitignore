@@ -2,6 +2,9 @@
 # package directories
 node_modules
 
+# Dependency Management
+package-lock.json
+
 .env*
 .aio
 
