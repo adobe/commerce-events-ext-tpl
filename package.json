@@ -1,5 +1,5 @@
 {
-  "name": "commerce-events-ext-tpl",
+  "name": "@adobe/commerce-events-ext-tpl",
   "version": "1.0.0-beta.1",
   "main": "src/index.js",
   "description": "Extensibility template for Commerce event-driven extension",

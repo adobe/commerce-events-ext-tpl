@@ -34,9 +34,9 @@ const briefOverviews = {
 
 const skipPrechecksPrompt = {
   type: "confirm",
-    name: "skipPrechecks",
-    message: "Do you want to skip the questionnaire and create your project only?",
-    default: false
+  name: "skipPrechecks",
+  message: "Do you want to skip the questionnaire and create your project only?",
+  default: false
 }
 
 const checkEventsConfigPrompt = [

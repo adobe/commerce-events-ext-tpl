@@ -110,7 +110,7 @@ class MainGenerator extends Generator {
                 spinner.warn(`Adobe I/O Service Account Private Key not valid`)
               } else if (!serviceAccountConnect) {
                 spinner.warn(`Adobe I/O Workspace Configuration not valid`)
-              } else if (providerIdConfig == "") {
+              } else if (providerIdConfig === "") {
                 spinner.warn(`Adobe I/O Event Provider ID not found`)
               } else if (!providerIdValid) {
                 spinner.warn(`Adobe I/O Event Provider ID '${providerIdConfig}' doesn't exist in your organization`)
@@ -168,9 +168,9 @@ class MainGenerator extends Generator {
       },
     })
 
-    if (listAnswer.actionType == 'generic') {
+    if (listAnswer.actionType === 'generic') {
       this.props['actionName'] = await this._promptForActionName('showcases how to develop Commerce event extensions', 'generic')
-    } else if (listAnswer.actionType == 'slack demo') {
+    } else if (listAnswer.actionType === 'slack demo') {
       this.props['actionName'] = await this._promptForActionName('showcases how to send Slack notifications', 'slack')
     }
     this.props['actionType'] = listAnswer.actionType
@@ -199,8 +199,8 @@ class MainGenerator extends Generator {
   }
 
   end () {
-    const keyToEventCodes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
-    utils.writeKeyAppConfig(this, keyToEventCodes, this.props['eventCodes'])
+    // const keyToEventCodes = this.keyToManifest + `.packages.${this.props.dirName}.actions.${this.props.actionName}.relations.event-listener-for`
+    // utils.writeKeyAppConfig(this, keyToEventCodes, this.props['eventCodes'])
   }
 
   /**
@@ -213,7 +213,7 @@ class MainGenerator extends Generator {
     const pluginsRegistry = new Plugins.default(oclifConfig)
 
     const plugins = await pluginsRegistry.list()
-    const isInstalled = plugins.some(plugin => plugin.name == pluginName)
+    const isInstalled = plugins.some(plugin => plugin.name === pluginName)
 
     // Nothing to do here, the plugin is already installed
     if (isInstalled) {
@@ -345,7 +345,7 @@ class MainGenerator extends Generator {
     } catch (error) {
       this.log('\n' + error.message)
       
-      if (error.code == 'ERROR_GET_ALL_EVENTMETADATA') {
+      if (error.code === 'ERROR_GET_ALL_EVENTMETADATA') {
         spinner.warn(`Adobe I/O Event Provider ID '${providerId}' doesn't exist in your organization`)
       }
       this.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['checkEventProvider']}`)) + '\n');

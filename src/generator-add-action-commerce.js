@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Adobe. All rights reserved.
+Copyright 2022 Adobe. All rights reserved.
 This file is licensed to you under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License. You may obtain a copy
 of the License at http://www.apache.org/licenses/LICENSE-2.0
@@ -54,11 +54,22 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
+    var templateInputs = { 
+      'LOG_LEVEL': 'debug'
+    }
+    var templateDotEnvVars = []
+
     var stubActionPath
     if (this.actionType == 'generic') {
       stubActionPath = commerceTemplates['stub-generic-action']
     } else if (this.actionType == 'slack demo') {
       stubActionPath = commerceTemplates['stub-slack-action']
+      templateInputs = {
+        'LOG_LEVEL': 'debug',
+        'SLACK_WEBHOOK': '$SLACK_WEBHOOOK',
+        'SLACK_CHANNEL': '$SLACK_CHANNEL'
+      },
+      templateDotEnvVars = ['SLACK_WEBHOOOK', 'SLACK_CHANNEL']
     }
     
     this.addAction(this.props.actionName, stubActionPath, {
@@ -74,9 +85,13 @@ const { Core } = require('@adobe/aio-sdk')`,
       },
       actionManifestConfig: {
         web: 'no',
-        inputs: { LOG_LEVEL: 'debug' },
-        annotations: { final: true, 'require-adobe-auth': false } // makes sure loglevel cannot be overwritten by request param
-      }
+        inputs: templateInputs,
+        annotations: { final: true, 'require-adobe-auth': false }, // makes sure loglevel cannot be overwritten by request param
+        relations: {
+          'event-listener-for': this.props.eventCodes
+        }
+      },
+      dotenvStub: { label: 'Place your local environment variables here', vars: templateDotEnvVars }
     })
   }
 }

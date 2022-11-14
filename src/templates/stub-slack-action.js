@@ -18,8 +18,6 @@ const request = require('request')
  * Replace the code below to change the Slack sample action (<%= actionName %>)
  * Setup Slack Webhook: https://slack.com/help/articles/115005265063-Incoming-webhooks-for-Slack
 */
-var slackWebhook = ""
-var slackChannel = "webhooks"
 
 async function main (params) {
   
@@ -60,7 +58,7 @@ async function main (params) {
       }
       
       var payload = {
-        "channel": slackChannel,
+        "channel": `${params.SLACK_CHANNEL}`,
         "username": "incoming-webhook",
         "text": slackMessage,
         "mrkdwn": true,
@@ -68,7 +66,7 @@ async function main (params) {
 
       var options = {
         method: 'POST',
-        url: slackWebhook,
+        url: `${params.SLACK_WEBHOOK}`,
         headers: {
           'Content-type': 'application/json'
         },
