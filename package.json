@@ -1,10 +1,16 @@
 {
   "name": "commerce-events-ext-tpl",
-  "version": "0.0.1",
+  "version": "1.0.0-beta.1",
   "main": "src/index.js",
+  "description": "Extensibility template for Commerce event-driven extension",
+  "engines": {
+    "node": "^14"
+  },
   "keywords": [
-    "aio-app-builder-templates"
+    "ecosystem:aio-app-builder-templates"
   ],
+  "author": "Adobe Inc.",
+  "license": "Apache-2.0",
   "dependencies": {
     "@adobe/aio-cli-lib-console": "^3.3.0",
     "@adobe/aio-lib-core-config": "^2.0.1",
@@ -25,6 +31,9 @@
     "jest": "^27",
     "stdout-stderr": "^0.1.13",
     "yeoman-test": "^6.3.0"
+  },
+  "peerDependencies": {
+    "@adobe/aio-cli-plugin-app-templates": "^1.0.0"
   },
   "scripts": {
     "test": "jest ./test"
