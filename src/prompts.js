@@ -9,43 +9,27 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 */
 
-const promptDocs = {
-  checkIntegrationTokens: "https://docs.magento.com/user-guide/system/integrations.html",
-  checkCommerceIntegration: "https://docs.magento.com/user-guide/system/integrations.html",
-  checkEventProvider: "https://developer.adobe.com/events/docs/guides/using/custom_events/",
-  checkEventRegistration: "https://developer.adobe.com/events/docs/guides/using/custom_events/"
-}
+const inquirer = require('inquirer')
+const slugify = require('slugify')
+const chalk = require('chalk')
+const ora = require('ora')
+const path = require('path')
 
-const briefOverviews = {
-  templateInfo: `\nCommerce Events Extension Template Overview:\n
-  * You will be guided through a questionnaire to help you set up your custom events with relevant documentation links.
-  * Pre-check for a valid event provider will be performed in your Commerce instance.
-  * You can install an optional plugin to enable App Builder Webhook Auto Subscriptions.
-  * An App Builder project will be created with Node.js packages pre-configured.\n`,
-  
-  pluginExtensionInfo: `\nApp Builder Webhook Auto Subscriptions (aio-cli-plugin-extension) Overview:\n
-  * The integration between [App builder project and I/O Events] allows to create applications that listen to Adobe events.
-  * App Builder webhook auto subscriptions push this concept further by subscribing your newly deployed project to I/O Events
-    automatically, so you can easily deploy your application in different environments or even share your application with 
-    other organizations.
-  * Also, this technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
-    manual setup in the Developer Console.\n`
-}
+const { readManifest, getEventsClient, fetchEventsMetadataForProviderId, selectEventsFromProvider, addEventstoManifest, isPluginExtensionInstalled, installPluginExtension } = require('./utils')
 
-const skipPrechecksPrompt = {
+const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
+const SLACK_DEMO_MANIFEST_PATH = path.join(__dirname, './templates/slack-demo/extension-manifest.json')
+
+var exitMenu = false
+
+const confirmIntegrationDetailsPrompt = {
   type: "confirm",
-  name: "skipPrechecks",
-  message: "Do you want to skip the questionnaire and create your project only?",
+  name: "hasIntegrationDetails",
+  message: "Do you have your Commerce integration access token?",
   default: false
 }
 
-const checkEventsConfigPrompt = [
-  {
-    type: "confirm",
-    name: "hasIntegrationTokens",
-    message: "Do you have your Commerce integration details?",
-    default: false
-  },
+const verifyEventsConfigPrompt = [
   {
     type: "input",
     name: "storeURL",
@@ -58,9 +42,6 @@ const checkEventsConfigPrompt = [
         return true
       }
       return "Invalid Web URL!"
-    },
-    when(answers) {
-      return answers.hasIntegrationTokens;
     }
   },
   {
@@ -75,9 +56,6 @@ const checkEventsConfigPrompt = [
         return true
       }
       return "Invalid Access Token!"
-    },
-    when(answers) {
-      return answers.hasIntegrationTokens;
     }
   }
 ]
@@ -89,10 +67,347 @@ const retryPrompt = {
   default: false
 }
 
+const briefOverviews = {
+  templateInfo: `\n${chalk.bold(chalk.blue("Commerce Events Extension Template Overview:"))}\n
+  * You have the option to generate boilerplate code for listening and acting on Commerce events.
+  * You can add the Commerce event listeners that you are interested in two ways:
+    -> Connect to your Adobe Commerce instance and select available events.
+    -> Choose one of the Commerce event providers available in your organization.\n
+  * You can install an optional plugin extension to enable App Builder webhook auto subscriptions.
+  * You can get help regarding documentation at any time from the menu.
+  * You can check out a sample demo project.
+  * An App Builder project will be created with Node.js packages pre-configured.\n`,
+  
+  pluginExtensionInfo: `\nApp Builder Webhook Auto Subscriptions (aio-cli-plugin-extension) Overview:\n
+  * The integration between [App builder project and I/O Events] allows to create applications that listen to Adobe events.
+  * App Builder webhook auto subscriptions push this concept further by subscribing your newly deployed project to I/O Events
+    automatically, so you can easily deploy your application in different environments or even share your application with 
+    other organizations.
+  * Also, this technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
+    manual setup in the Developer Console.\n`
+}
+
+const promptDocs = {
+  mainDoc: "https://developer-stage.adobe.com/commerce/events/events/",
+  commerceIntegrationDoc: "https://docs.magento.com/user-guide/system/integrations.html",
+  commerceEventsSetupDoc: "https://developer-stage.adobe.com/commerce/events/events/project-setup/"
+}
+
+// Top Level prompts
+const promptTopLevelFields = (manifest) => {
+  return inquirer.prompt([
+    {
+      type: 'input',
+      name: 'name',
+      message: "What do you want to name your extension?",
+      validate(answer) {
+        if (!answer.length) {
+          return 'Required.'
+        }
+
+        return true
+      }
+    },
+    {
+      type: 'input',
+      name: 'description',
+      message: "Please provide a short description of your extension:",
+      validate(answer) {
+        if (!answer.length) {
+          return 'Required.'
+        }
+
+        return true
+      }
+    },
+    {
+      type: 'input',
+      name: 'version',
+      message: "What version would you like to start with?",
+      default: '0.0.1',
+      validate(answer) {
+        if (!new RegExp("^\\bv?(?:0|[1-9][0-9]*)(?:\\.(?:0|[1-9][0-9]*)){2}(?:-[\\da-z\\-]+(?:\\.[\\da-z\\-]+)*)?(?:\\+[\\da-z\\-]+(?:\\.[\\da-z\\-]+)*)?\\b$").test(answer)) {
+          return 'Required. Must match semantic versioning rules.'
+        }
+
+        return true
+      }
+    }
+  ])
+  .then((answers) => {
+    if (answers.name) {
+      manifest.name = answers.name
+      manifest.id = slugify(answers.name, {
+        replacement: '-',  // replace spaces with replacement character, defaults to `-`
+        remove: undefined, // remove characters that match regex, defaults to `undefined`
+        lower: true,       // convert to lower case, defaults to `false`
+        strict: true,      // strip special characters except replacement, defaults to `false`
+        locale: 'vi',      // language code of the locale to use
+        trim: true         // trim leading and trailing replacement chars, defaults to `true`
+      })
+    }
+
+    if (answers.description) {
+      manifest.description = answers.description
+    }
+
+    if (answers.version) {
+      manifest.version = answers.version
+    }
+  })
+}
+
+// Main Menu prompts
+const promptMainMenu = async (manifest) => {
+  const choices = []
+
+  choices.push(
+    new inquirer.Separator(),
+    {
+      name: "Add event listener for the event provider configured in your Adobe Commerce store",
+      value: selectEventsFromCommerceInstance.bind(this, manifest, 'runtimeActions'),
+    },
+    {
+      name: "Add event listener for an existing Commerce event provider",
+      value: selectEventsFromProvider.bind(this, manifest, 'runtimeActions'),
+      // value: dummyPrompt.bind(this)
+    }
+  )
+
+  if (!await isPluginExtensionInstalled()) {
+    choices.push(
+      {
+        name: "Subscribe to events automatically during deployment",
+        value: installPluginExtension.bind(this)
+      }
+    )
+  }
+
+  choices.push(
+    new inquirer.Separator(),
+      {
+        name: "I'm done",
+        value: () => {
+          return Promise.resolve(true)
+        }
+      },
+      {
+        name: "I don't know",
+        value: promptGuideMenu.bind(this, manifest)
+      }
+  )
+
+  return inquirer
+    .prompt({
+      type: 'list',
+      name: 'execute',
+      message: "What would you like to do next?",
+      choices,
+    })
+    .then((answers) => answers.execute())
+    .then((endMainMenu) => {
+      if (!endMainMenu && !exitMenu) {
+        return promptMainMenu(manifest)
+      }
+
+      // Add a generic action in case the user doesn't add one
+      if (!manifest.runtimeActions) {
+        manifest['runtimeActions'] = manifest['runtimeActions'] || []
+        manifest['runtimeActions'].push({
+          'name': 'generic'
+        })
+      }
+
+      // Remove temporary manifest nodes
+      delete manifest.seenEventNames
+      delete manifest.lastNameIdxs
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+}
+
+// Prompts to verify the Event Provider configuration
+const selectEventsFromCommerceInstance = async (manifest, manifestNodeName) => {
+  var retryAnswer
+  var isConfigured = false
+  var eventProviderId
+  const spinner = ora()
+
+  // Prompts to verify the Event Provider configuration
+  do {
+    console.log(chalk.blue(chalk.bold(`  Please refer to the link below for setting up your Commerce integration:\n    -> ${promptDocs['commerceIntegrationDoc']}`)) + '\n')
+    
+    // var answer = await inquirer.prompt(confirmIntegrationDetailsPrompt)
+    // if (!answer.hasIntegrationDetails) { return }
+    
+    var answers = await inquirer.prompt(verifyEventsConfigPrompt)
+    const CHECK_EVENTS_CONFIG_API = path.join(answers.storeURL, CHECK_EVENTS_CONFIG_ENDPOINT)
+    const headers = {
+      'Authorization': `Bearer ${answers.accessToken}`,
+      'Content-Type': 'application/json'
+    }
+
+    try {
+      spinner.start("Checking Adobe I/O Event Provider configuration...")
+      const response = await fetch(CHECK_EVENTS_CONFIG_API, {
+        method: 'get',
+        headers: headers
+      })
+      if (response.ok) {
+        const content = await response.json()
+        const responseObj = JSON.parse(JSON.stringify(content))
+        const serviceAccountConfig = responseObj.technical_service_account_configured
+        const serviceAccountConnect = responseObj.technical_service_account_can_connect_to_io_events
+        eventProviderId = responseObj.provider_id_configured
+        const providerIdValid = responseObj.provider_id_valid
+  
+        // Success Case: Commerce instance is configured correctly for Adobe I/O Events
+        if (responseObj.status === 'ok') {
+          isConfigured = true
+          spinner.succeed(`Verified configuration for Adobe I/O Event Provider\n`)
+          break
+        
+        } else {
+          // Failure Case #1: Event Provider ID is not configured correctly for Adobe I/O Events
+          spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
+          if (!serviceAccountConfig) {
+            spinner.warn(`Adobe I/O Service Account Private Key not valid`)
+          } else if (!serviceAccountConnect) {
+            spinner.warn(`Adobe I/O Workspace Configuration not valid`)
+          } else if (eventProviderId === "") {
+            spinner.warn(`Adobe I/O Event Provider ID not found`)
+          } else if (!providerIdValid) {
+            spinner.warn(`Adobe I/O Event Provider ID '${eventProviderId}' doesn't exist in your organization`)
+          }
+          console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceEventsSetupDoc']}`)) + '\n');
+          retryAnswer = await inquirer.prompt(retryPrompt)
+        }
+      } else {
+        // Failure Case #2: Something is wrong with the Commerce Integration access token
+        spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
+        const content = await response.json()
+        const responseObj = JSON.parse(JSON.stringify(content))
+  
+        spinner.warn(responseObj.message)
+        retryAnswer = await inquirer.prompt(retryPrompt)
+        }
+    } catch (error) {
+      // Failure Case #3: Any other errors
+      spinner.fail(`Verified configuration for Adobe I/O Event Provider\n`)
+      spinner.warn(error.message)
+      retryAnswer = await inquirer.prompt(retryPrompt)
+    }
+  } while (retryAnswer?.retry);
+  
+  // Prompt to setup event codes in the app.config.yaml file
+  if (isConfigured) {
+    const eventsClient = await getEventsClient()
+    await addEventstoManifest(eventsClient, eventProviderId, manifest, manifestNodeName)
+
+    // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
+    if (!await isPluginExtensionInstalled()) {
+      await installPluginExtension()
+    }
+  }  
+}
+
+// Prompts for event metadata
+const nestedEventCodePrompt = (manifest, manifestNodeName) => {
+  let eventCode = 'com.example.event'
+
+  return inquirer.prompt({
+    type: 'input',
+    name: 'eventCode',
+    message: "How would you like to name this event code?",
+    default: eventCode
+  })
+  .then(async (answer) => {
+    manifest[manifestNodeName] = manifest[manifestNodeName] || []
+    manifest[manifestNodeName].push(answer.eventCode)
+
+    // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
+    if (!await isPluginExtensionInstalled()) {
+      await installPluginExtension()
+    }
+  })
+  .catch((error) => {
+    console.error(error)
+  })
+}
+
+
+
+// Guide Menu Prompts
+const promptGuideMenu = (manifest) => {
+  const choices = []
+
+  choices.push(
+    new inquirer.Separator(),
+    {
+      name: "Try a demo project",
+      value: () => {
+        const slackDemoManifest = readManifest(SLACK_DEMO_MANIFEST_PATH)
+
+        // Update the extension manifest object
+        manifest['name'] = slackDemoManifest['name'] || null
+        manifest['id'] = slackDemoManifest['id'] || null
+        manifest['description'] = slackDemoManifest['description'] || null
+        manifest['version'] = slackDemoManifest['version'] || null
+        manifest['templateFolder'] = slackDemoManifest['templateFolder'] || null
+        manifest['eventProviderId'] = slackDemoManifest['eventProviderId'] || null
+        manifest['runtimeActions'] = slackDemoManifest['runtimeActions'] || null
+        manifest['templateInputs'] = slackDemoManifest['templateInputs'] || null
+        manifest['templateDotEnvVars'] = slackDemoManifest['templateDotEnvVars'] || null
+        exitMenu = true
+
+        return Promise.resolve(true)
+      }
+    },
+    {
+      name: "Find some help",
+      value: helpPrompts.bind(this)
+    },
+    new inquirer.Separator(),
+    {
+      name: "Go back",
+      value: () => {
+        return Promise.resolve(true)
+      }
+    }
+  )
+
+  return inquirer
+    .prompt({
+      type: 'list',
+      name: 'execute',
+      message: "What about this then?",
+      choices,
+    })
+    .then((answers) => answers.execute())
+    .then((endGuideMenu) => {
+      if (!endGuideMenu) {
+        return promptGuideMenu(manifest)
+      }
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+}
+
+// Helper prompts for Guide Menu
+const helpPrompts = () => {
+  console.log('  Please refer to:')
+  console.log(chalk.blue(chalk.bold(`  -> ${promptDocs['mainDoc']}`)) + '\n')
+}
+
+const dummyPrompt = () => {
+  console.log(chalk.blue(chalk.bold("  Please stay tuned for this feature!")+ '\n'))
+}
+
 module.exports = {
   briefOverviews,
-  promptDocs,
-  skipPrechecksPrompt,
-  checkEventsConfigPrompt,
-  retryPrompt
+  promptTopLevelFields,
+  promptMainMenu,
+  promptDocs
 }

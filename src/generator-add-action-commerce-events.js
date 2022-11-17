@@ -13,8 +13,6 @@ const path = require('path')
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
 
-const commerceTemplates = require('./templates')
-
 class CommerceEventsActionGenerator extends ActionGenerator {
   constructor (args, opts) {
     super(args, opts)
@@ -29,7 +27,7 @@ class CommerceEventsActionGenerator extends ActionGenerator {
 const { Core } = require('@adobe/aio-sdk')`,
 
       responseCode: `// replace this with the api you want to access
-    const apiEndpoint = 'https://adobeioruntime.net/api/v1'
+    const apiEndpoint = \`\${params.API_ENDPOINT}\`
 
     // fetch content from external api endpoint
     const res = await fetch(apiEndpoint)
@@ -44,7 +42,7 @@ const { Core } = require('@adobe/aio-sdk')`,
     }
     this.props['actionName'] = this.options['action-name']
     this.props['eventCodes'] = this.options['event-codes']
-    this.actionType = this.options['action-type']
+    this.props['extensionManifest'] = this.options['extension-manifest']
   }
 
   // async prompting () {
@@ -54,39 +52,38 @@ const { Core } = require('@adobe/aio-sdk')`,
   writing () {
     this.sourceRoot(path.join(__dirname, '.'))
 
+    // Generic Project
+    var templateActionPath = commonTemplates['stub-action']
     var templateInputs = { 
-      'LOG_LEVEL': 'debug'
+      LOG_LEVEL: 'debug',
+      API_ENDPOINT: '$API_ENDPOINT'
     }
-    var templateDotEnvVars = []
+    var templateDotEnvVars = ['API_ENDPOINT', 'PREFERRED_PROVIDERS']
 
-    var stubActionPath
-    if (this.actionType == 'generic') {
-      stubActionPath = commerceTemplates['stub-generic-action']
-    } else if (this.actionType == 'slack demo') {
-      stubActionPath = commerceTemplates['stub-slack-action']
-      templateInputs = {
-        'LOG_LEVEL': 'debug',
-        'SLACK_WEBHOOK': '$SLACK_WEBHOOOK',
-        'SLACK_CHANNEL': '$SLACK_CHANNEL'
-      },
-      templateDotEnvVars = ['SLACK_WEBHOOOK', 'SLACK_CHANNEL']
+    // Demo Project
+    if (this.props.extensionManifest.templateFolder) {
+      templateActionPath = `./templates/${this.props.extensionManifest.templateFolder}/${this.props.actionName}-action.js`
+      templateInputs = this.props.extensionManifest.templateInputs || {}
+      templateDotEnvVars = this.props.extensionManifest.templateDotEnvVars || []
     }
     
-    this.addAction(this.props.actionName, stubActionPath, {
-      // testFile: commerceTemplates['stub-action.test'],
+    this.addAction(this.props.actionName, templateActionPath, {
+      // testFile: templates['stub-action.test'],
       sharedLibFile: commonTemplates.utils,
       sharedLibTestFile: commonTemplates['utils.test'],
-      // e2eTestFile: commerceTemplates['stub-action.e2e'],
+      e2eTestFile: commonTemplates['stub-action.e2e'],
       tplContext: this.props,
       dependencies: {
         '@adobe/aio-sdk': commonDependencyVersions['@adobe/aio-sdk'],
-        'node-fetch': '^2.6.0',
-        'request': '^2.88.2'
+        'node-fetch': '^2.6.0'
       },
       actionManifestConfig: {
         web: 'no',
         inputs: templateInputs,
-        annotations: { final: true, 'require-adobe-auth': false }, // makes sure loglevel cannot be overwritten by request param
+        annotations: { 
+          final: true, 
+          'require-adobe-auth': false 
+        }, // makes sure loglevel cannot be overwritten by request param
         relations: {
           'event-listener-for': this.props.eventCodes
         }
