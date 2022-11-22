@@ -21,11 +21,6 @@ App Builder Template for Commerce Event-Driven Extension
 - Credentials in the project from previous point
 - I/O Management API
 
-# Additional Plugin Requirements
-1. [@adobe/aio-cli-plugin-app-templates 1.0.0-beta.6](https://github.com/adobe/aio-cli-plugin-app-templates)
-2. [@adobe/aio-cli-plugin-app (Switch to 'story/ACNA-1650' branch)](https://github.com/adobe/aio-cli-plugin-app)
-3. [@adobe/aio-cli-plugin-extension 1.0.0](https://github.com/adobe/aio-cli-plugin-extension)
-
 # Usage
 1. `git clone <template-url>` & `npm install`
 2. `aio app init <your-project-name> --template <relative-path-to-template-folder-from-project-root>`
