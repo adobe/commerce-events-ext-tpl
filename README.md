@@ -10,29 +10,32 @@ OF ANY KIND, either express or implied. See the License for the specific languag
 governing permissions and limitations under the License.
 -->
 
-# commerce-events-ext-tpl
-
-App Builder Template for Commerce Event-Driven Extension
+# @adobe/commerce-events-ext-tpl
+Extensibility Template for Handling Commerce Events
 
 # Prerequisites
 - `nodejs` (v14) and `npm` installed locally - https://nodejs.org/en/
 - `aio` command line tool - https://github.com/adobe/aio-cli, https://developer.adobe.com/runtime/docs/guides/tools/cli_install/
 - Project in Adobe developer console
-- Credentials in the project from previous point
 - I/O Management API
 
-# Usage
+# Installation
+- `npm install -g @adobe/aio-cli`
+
+# Local Usage
 1. `git clone <template-url>` & `npm install`
-2. `aio app init <your-project-name> --template <relative-path-to-template-folder-from-project-root>`
+2. `aio app init <your-folder-name> --template <relative-path-to-template-folder-from-project-root>`
     OR
-   `aio app init <your-project-name> --template <absolute-path-to-template-folder>`
+   `aio app init <your-folder-name> --template <absolute-path-to-template-folder>`
 3. Check your `app.config.yaml` file to see if the actions and event codes are set up correctly.
 4. `aio app deploy` & `aio app undeploy` will take care of the event registration/subscription if `aio-cli-plugin-extension` is installed.
+
+# Production Usage
+1. `aio app init <your-folder-name>`
+2. Select the template named `@adobe/commerce-events-ext-tpl`
 
 # Contributing
 Contributions are welcomed! Read the [Contributing Guide](CONTRIBUTING.md) for more information.
 
-
 # Licensing
-
 This project is licensed under the Apache V2 License. See [LICENSE](LICENSE) for more information.
