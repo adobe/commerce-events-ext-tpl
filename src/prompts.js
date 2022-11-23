@@ -15,19 +15,14 @@ const chalk = require('chalk')
 const ora = require('ora')
 const path = require('path')
 
-const { readManifest, getEventsClient, fetchEventsMetadataForProviderId, selectEventsFromProvider, addEventstoManifest, isPluginExtensionInstalled, installPluginExtension } = require('./utils')
+const coreConfig = require('@adobe/aio-lib-core-config')
+
+const { readManifest, getEventsClient, findProvidersForCommerceEvents, selectEventProvider, addEventstoManifest, isPluginExtensionInstalled, installPluginExtension } = require('./utils')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
 const SLACK_DEMO_MANIFEST_PATH = path.join(__dirname, './templates/slack-demo/extension-manifest.json')
 
 var exitMenu = false
-
-const confirmIntegrationDetailsPrompt = {
-  type: "confirm",
-  name: "hasIntegrationDetails",
-  message: "Do you have your Commerce integration access token?",
-  default: false
-}
 
 const verifyEventsConfigPrompt = [
   {
@@ -76,15 +71,7 @@ const briefOverviews = {
   * You can install an optional plugin extension to enable App Builder webhook auto subscriptions.
   * You can get help regarding documentation at any time from the menu.
   * You can check out a sample demo project.
-  * An App Builder project will be created with Node.js packages pre-configured.\n`,
-  
-  pluginExtensionInfo: `\nApp Builder Webhook Auto Subscriptions (aio-cli-plugin-extension) Overview:\n
-  * The integration between [App builder project and I/O Events] allows to create applications that listen to Adobe events.
-  * App Builder webhook auto subscriptions push this concept further by subscribing your newly deployed project to I/O Events
-    automatically, so you can easily deploy your application in different environments or even share your application with 
-    other organizations.
-  * Also, this technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
-    manual setup in the Developer Console.\n`
+  * An App Builder project will be created with Node.js packages pre-configured.\n`
 }
 
 const promptDocs = {
@@ -164,13 +151,12 @@ const promptMainMenu = async (manifest) => {
   choices.push(
     new inquirer.Separator(),
     {
-      name: "Add event listener for the event provider configured in your Adobe Commerce store",
-      value: selectEventsFromCommerceInstance.bind(this, manifest, 'runtimeActions'),
+      name: "Add event listener for the configured event provider in your Adobe Commerce store",
+      value: addEventListenerForCommerceInstance.bind(this, manifest, 'runtimeActions'),
     },
     {
       name: "Add event listener for an existing Commerce event provider",
-      value: selectEventsFromProvider.bind(this, manifest, 'runtimeActions'),
-      // value: dummyPrompt.bind(this)
+      value: addEventListenerForEventProvider.bind(this, manifest, 'runtimeActions'),
     }
   )
 
@@ -214,12 +200,13 @@ const promptMainMenu = async (manifest) => {
       if (!manifest.runtimeActions) {
         manifest['runtimeActions'] = manifest['runtimeActions'] || []
         manifest['runtimeActions'].push({
-          'name': 'generic'
+          'name': 'generic',
+          'eventCodes': []
         })
       }
 
       // Remove temporary manifest nodes
-      delete manifest.seenEventNames
+      delete manifest.seenActionNames
       delete manifest.lastNameIdxs
     })
     .catch((error) => {
@@ -228,18 +215,14 @@ const promptMainMenu = async (manifest) => {
 }
 
 // Prompts to verify the Event Provider configuration
-const selectEventsFromCommerceInstance = async (manifest, manifestNodeName) => {
+const addEventListenerForCommerceInstance = async (manifest, manifestNodeName) => {
   var retryAnswer
   var isConfigured = false
-  var eventProviderId
   const spinner = ora()
 
   // Prompts to verify the Event Provider configuration
   do {
     console.log(chalk.blue(chalk.bold(`  Please refer to the link below for setting up your Commerce integration:\n    -> ${promptDocs['commerceIntegrationDoc']}`)) + '\n')
-    
-    // var answer = await inquirer.prompt(confirmIntegrationDetailsPrompt)
-    // if (!answer.hasIntegrationDetails) { return }
     
     var answers = await inquirer.prompt(verifyEventsConfigPrompt)
     const CHECK_EVENTS_CONFIG_API = path.join(answers.storeURL, CHECK_EVENTS_CONFIG_ENDPOINT)
@@ -259,7 +242,7 @@ const selectEventsFromCommerceInstance = async (manifest, manifestNodeName) => {
         const responseObj = JSON.parse(JSON.stringify(content))
         const serviceAccountConfig = responseObj.technical_service_account_configured
         const serviceAccountConnect = responseObj.technical_service_account_can_connect_to_io_events
-        eventProviderId = responseObj.provider_id_configured
+        var eventProviderId = responseObj.provider_id_configured
         const providerIdValid = responseObj.provider_id_valid
   
         // Success Case: Commerce instance is configured correctly for Adobe I/O Events
@@ -312,31 +295,19 @@ const selectEventsFromCommerceInstance = async (manifest, manifestNodeName) => {
   }  
 }
 
-// Prompts for event metadata
-const nestedEventCodePrompt = (manifest, manifestNodeName) => {
-  let eventCode = 'com.example.event'
+const addEventListenerForEventProvider = async (manifest, manifestNodeName) => {
+  const eventsClient = await getEventsClient()
+  const projectConfig = coreConfig.get('project')
+  const providers = await findProvidersForCommerceEvents(eventsClient, projectConfig.org.id)
+  const eventProvider = await selectEventProvider(providers)
 
-  return inquirer.prompt({
-    type: 'input',
-    name: 'eventCode',
-    message: "How would you like to name this event code?",
-    default: eventCode
-  })
-  .then(async (answer) => {
-    manifest[manifestNodeName] = manifest[manifestNodeName] || []
-    manifest[manifestNodeName].push(answer.eventCode)
+  await addEventstoManifest(eventsClient, eventProvider.id, manifest, manifestNodeName)
 
-    // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
-    if (!await isPluginExtensionInstalled()) {
-      await installPluginExtension()
-    }
-  })
-  .catch((error) => {
-    console.error(error)
-  })
+  // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
+  if (!await isPluginExtensionInstalled()) {
+    await installPluginExtension()
+  }
 }
-
-
 
 // Guide Menu Prompts
 const promptGuideMenu = (manifest) => {

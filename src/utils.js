@@ -30,6 +30,12 @@ const pluginExtensionInfoOverview = `\n${chalk.bold(chalk.blue(`App Builder Webh
   * This technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
     manual setup in the Developer Console.\n`
 
+/**
+ * Reads manifest file
+ *
+ * @param {string} manifestPath - path to the manifest file
+ * @returns {*} - manifest object
+ */
 function readManifest (manifestPath) {
   try {
     return JSON.parse(
@@ -44,16 +50,22 @@ function readManifest (manifestPath) {
   }
 }
 
+/**
+ * Writes manifest file with appropriate indentation
+ *
+ * @param {*} manifest - manifest object
+ * @param {string} manifestPath - path to the manifest file
+ */
 function writeManifest (manifest, manifestPath) {
   fs.writeJsonSync(manifestPath, manifest, { spaces: 2 })
 }
 
 /**
-   * Configures an event api client from sdk
-   *
-   * @returns {*} - event api client from sdk
-   */
- async function getEventsClient () {
+ * Configures an event api client from sdk
+ *
+ * @returns {*} - event api client from sdk
+ */
+async function getEventsClient () {
   // Load console configuration from .aio and .env files
   const projectConfig = coreConfig.get('project')
   if (!projectConfig) {
@@ -77,12 +89,12 @@ function writeManifest (manifest, manifestPath) {
 }
 
 /**
-   * Fetches event codes for an Event Provider ID
-   *
-   * @param {*} client - event api client from sdk
-   * @param {string} providerId - id of Event Provider
-   */
- async function fetchEventsMetadataForProviderId (client, providerId) {
+ * Fetches event codes for an Event Provider ID
+ *
+ * @param {*} client - event api client from sdk
+ * @param {string} providerId - id of Event Provider
+ */
+async function fetchEventsMetadataForProviderId (client, providerId) {
   const spinner = ora()
   spinner.start('Fetching event codes...')
   try {
@@ -116,7 +128,7 @@ function writeManifest (manifest, manifestPath) {
 }
 
 /**
- * Find providers for Commerce events
+ * Finds providers for Commerce events
  *
  * @param {*} client - Adobe events sdk client
  * @param {string} orgId - Adobe org id
@@ -143,12 +155,13 @@ async function findProvidersForCommerceEvents (client, orgId) {
       const providerInfo = await client.getAllEventMetadataForProvider(provider.id)
       newProvider.events = providerInfo._embedded.eventmetadata.map(e => e.event_code)
       
-      // for (const event of newProvider.events.values()) {
-      //   if (event.includes(commerceEventCodePrefix)) {
-      //     providersList.push(newProvider)
-      //     break
-      //   }
-      // }
+      /* Filter based on Commerce event code prefix
+      for (const event of newProvider.events.values()) {
+        if (event.includes(commerceEventCodePrefix)) {
+          providersList.push(newProvider)
+          break
+        }
+      } */
 
       if (newProvider.metadata === commerceProviderMetadata) {
         providersList.push(newProvider)
@@ -161,13 +174,12 @@ async function findProvidersForCommerceEvents (client, orgId) {
 }
 
 /**
- * Asks user for provider
+ * Asks user for event provider
  *
- * @param {*} providers - list of filtered providers
- * @param {string} eventType - event type registered for provider
+ * @param {*} providers - list of providers
  * @returns {*} - returns provider details based on user input
  */
- async function selectProvider (providers) {
+ async function selectEventProvider (providers) {
   if (providers.length === 0) {
     throw new Error('Event providers list is empty. You need to specify at least one provider to select from.')
   }
@@ -192,28 +204,22 @@ async function findProvidersForCommerceEvents (client, orgId) {
   return providers.find(e => e.id === answer.eventProvider)
 }
 
-const selectEventsFromProvider = async (manifest, manifestNodeName) => {
-  const eventsClient = await getEventsClient()
-  const projectConfig = coreConfig.get('project')
-  const providers = await findProvidersForCommerceEvents(eventsClient, projectConfig.org.id)
-  const eventProvider = await selectProvider(providers)
-
-  await addEventstoManifest(eventsClient, eventProvider.id, manifest, manifestNodeName)
-
-  // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
-  if (!await isPluginExtensionInstalled()) {
-    await installPluginExtension()
-  }
-}
-
+/**
+ * Adds selected events information to manifest object
+ *
+ * @param {*} eventsClient - event api client from sdk
+ * @param {*} eventProviderId - event provider id of the event
+ * @param {*} manifest - manifest object
+ * @param {*} manifestNodeName - node name to write events information
+ */
 async function addEventstoManifest(eventsClient, eventProviderId, manifest, manifestNodeName) {
   const eventsMetadata = await fetchEventsMetadataForProviderId(eventsClient, eventProviderId)
   const choices = eventsMetadata.map(metadata => {
     return {
       name: metadata.eventCode + ' (' + metadata.eventLabel + ')',
       value: {
-        name: metadata.eventName,
-        eventCodes: [metadata.eventCode]
+        eventName: metadata.eventName,
+        eventCode: metadata.eventCode
       }
     }
   })
@@ -225,50 +231,83 @@ async function addEventstoManifest(eventsClient, eventProviderId, manifest, mani
     choices: choices
   })
 
+  // Set default action name and event codes depending on the number of selections
+  if (checkBoxAnswer.events.length === 1) {
+    var actionName = checkBoxAnswer.events[0].eventName
+    var eventCodes = [ checkBoxAnswer.events[0].eventCode ]
+  } else if (checkBoxAnswer.events.length > 1) {
+    var actionName = 'generic'
+    var eventCodes = checkBoxAnswer.events.map(event => event.eventCode)
+  } else {
+    return
+  }
+
   manifest['eventProviderId'] = eventProviderId
   manifest[manifestNodeName] = manifest[manifestNodeName] || []
-
-  const eventCodes = manifest[manifestNodeName].map(node => node.eventCodes[0])
-  manifest['seenEventNames'] = manifest['seenEventNames'] || new Set()
+  manifest['seenActionNames'] = manifest['seenActionNames'] || new Set()
   manifest['lastNameIdxs'] = manifest['lastNameIdxs'] || {}
 
-  for (let i = 0; i < checkBoxAnswer.events.length; i++) {
-    const event = checkBoxAnswer.events[i]
-
-    if (eventCodes.includes(event.eventCodes[0])) {
-      event.name = getIndexedActionName(event.name, manifest['seenEventNames'], manifest['lastNameIdxs'])
-    }
-    event.name = await inputActionNamePrompt(event.name, event.eventCodes[0])
-    manifest[manifestNodeName].push(event)
+  // Makes sure the action names don't clash with existing ones
+  const actionNames = manifest[manifestNodeName].map(node => node.name)
+  if (actionNames.includes(actionName)) {
+    var [ actionName, seenActionNamesTemp, lastNameIdxsTemp ] = getIndexedAction(actionName, manifest['seenActionNames'], manifest['lastNameIdxs'])
   }
+
+  // Keeps track of the seen action names and their last name indices
+  var newActionName = await inputActionNamePrompt(actionName)
+  if (newActionName === actionName) {
+    manifest['seenActionNames'] = seenActionNamesTemp
+    manifest['lastNameIdxs'] = lastNameIdxsTemp
+  }
+
+  // Writes the node with the final action name and event codes
+  manifest[manifestNodeName].push({
+    name: newActionName,
+    eventCodes: eventCodes
+  })
 }
 
-function getIndexedActionName(eventName, seenEventNames, lastNameIdxs) {
-  seenEventNames.add(eventName)
-  if (!(eventName in lastNameIdxs)) {
-    lastNameIdxs[eventName] = 0
-  }
-
-  let k = lastNameIdxs[eventName]
-  let idxActionName = eventName
-  while (seenEventNames.has(idxActionName)) {
-    k += 1
-    idxActionName = `${eventName}-${k}`
-  }
-
-  lastNameIdxs[eventName] = k
-  seenEventNames.add(idxActionName)
-
-  return idxActionName
-}
-
-// Prompts for action metadata
-async function inputActionNamePrompt (actionName, eventCode) {
+/**
+ * Modifies action name by suffixing an index if the action name already exists
+ *
+ * @param {*} actionName - name for the runtime action
+ * @param {*} seenActionNames - runtime action names already entered
+ * @param {*} lastNameIdxs - dictionary to store the last added index to an existing action name
+ * @returns {string} - modified action name
+ */
+function getIndexedAction(actionName, seenActionNames, lastNameIdxs) {
+  const seenActionNamesTemp = new Set(seenActionNames)
+  const lastNameIdxsTemp = Object.assign({}, lastNameIdxs)
   
+  seenActionNamesTemp.add(actionName)
+  if (!(actionName in lastNameIdxsTemp)) {
+    lastNameIdxsTemp[actionName] = 0
+  }
+
+  let k = lastNameIdxsTemp[actionName]
+  let idxActionName = actionName
+  while (seenActionNamesTemp.has(idxActionName)) {
+    k += 1
+    idxActionName = `${actionName}-${k}`
+  }
+
+  lastNameIdxsTemp[actionName] = k
+  seenActionNamesTemp.add(idxActionName)
+
+  return [ idxActionName, seenActionNamesTemp, lastNameIdxsTemp ]
+}
+
+/**
+ * Modifies action name by suffixing an index if the action name already exists
+ *
+ * @param {*} actionName - default name for the runtime action
+ * @returns {string} - entered action name or the default one
+ */
+async function inputActionNamePrompt (actionName) {
   const answer = await inquirer.prompt({
     type: 'input',
     name: 'actionName',
-    message: `What do you want to name the serverless runtime action for event code ${chalk.green(chalk.bold(eventCode))}?`,
+    message: `What do you want to name the serverless runtime action for listening to selected event(s)?`,
     default: actionName,
     validate (input) {
     // Must be a valid openwhisk action name, this is a simplified set see:
@@ -289,6 +328,9 @@ async function inputActionNamePrompt (actionName, eventCode) {
   return answer.actionName
 }
 
+/**
+ * Checks if @adobe/aio-cli-plugin-extension is already installed
+ */
 async function isPluginExtensionInstalled () {
   const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
   const pluginsRegistry = new Plugins.default(oclifConfig)
@@ -299,7 +341,7 @@ async function isPluginExtensionInstalled () {
 }
 
 /**
- * Prompts for installing aio-cli-plugin-extension if not already installed
+ * Prompts for installing @adobe/aio-cli-plugin-extension if not already installed
  */
 async function installPluginExtension () {
   const spinner = ora()
@@ -362,8 +404,7 @@ module.exports = {
   getEventsClient,
   fetchEventsMetadataForProviderId,
   findProvidersForCommerceEvents,
-  selectProvider,
-  selectEventsFromProvider,
+  selectEventProvider,
   addEventstoManifest,
   isPluginExtensionInstalled,
   installPluginExtension
