@@ -89,10 +89,11 @@ async function getEventsClient () {
 }
 
 /**
- * Fetches event codes for an Event Provider ID
+ * Fetches specific events information for an event provider id
  *
  * @param {*} client - event api client from sdk
- * @param {string} providerId - id of Event Provider
+ * @param {string} providerId - id of event provider
+ * @returns {*} - specific events information
  */
 async function fetchEventsMetadataForProviderId (client, providerId) {
   const spinner = ora()
@@ -100,7 +101,7 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
   try {
     const providerInfo = await client.getAllEventMetadataForProvider(providerId)
     // const eventCodes = providerInfo._embedded.eventmetadata.map(e => e.event_code)
-    const eventCodes = providerInfo._embedded.eventmetadata.map(e => ({
+    const events = providerInfo._embedded.eventmetadata.map(e => ({
       'eventName': slugify(e.label, {
         replacement: '-',  // replace spaces with replacement character, defaults to `-`
         remove: undefined, // remove characters that match regex, defaults to `undefined`
@@ -114,7 +115,7 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
     }))
     spinner.stop()
 
-    return eventCodes
+    return events
   
   } catch (error) {
     console.log('\n' + error.message)
@@ -132,7 +133,7 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
  *
  * @param {*} client - Adobe events sdk client
  * @param {string} orgId - Adobe org id
- * @returns {*} - provider(s) details
+ * @returns {*} - event provider(s) details
  */
 async function findProvidersForCommerceEvents (client, orgId) {
   const commerceProviderMetadata = "3rd_party_custom_events"
@@ -176,7 +177,7 @@ async function findProvidersForCommerceEvents (client, orgId) {
 /**
  * Asks user for event provider
  *
- * @param {*} providers - list of providers
+ * @param {*} providers - list of event providers
  * @returns {*} - returns provider details based on user input
  */
  async function selectEventProvider (providers) {
@@ -208,9 +209,9 @@ async function findProvidersForCommerceEvents (client, orgId) {
  * Adds selected events information to manifest object
  *
  * @param {*} eventsClient - event api client from sdk
- * @param {*} eventProviderId - event provider id of the event
+ * @param {string} eventProviderId - event provider id of the event
  * @param {*} manifest - manifest object
- * @param {*} manifestNodeName - node name to write events information
+ * @param {string} manifestNodeName - node name to write events information
  */
 async function addEventstoManifest(eventsClient, eventProviderId, manifest, manifestNodeName) {
   const eventsMetadata = await fetchEventsMetadataForProviderId(eventsClient, eventProviderId)
@@ -270,10 +271,10 @@ async function addEventstoManifest(eventsClient, eventProviderId, manifest, mani
 /**
  * Modifies action name by suffixing an index if the action name already exists
  *
- * @param {*} actionName - name for the runtime action
- * @param {*} seenActionNames - runtime action names already entered
- * @param {*} lastNameIdxs - dictionary to store the last added index to an existing action name
- * @returns {string} - modified action name
+ * @param {string} actionName - name for the runtime action
+ * @param {string} seenActionNames - runtime action names already entered
+ * @param {string} lastNameIdxs - dictionary to store the last added index to an existing action name
+ * @returns {list} - modified action name, seen action names and their last name indices
  */
 function getIndexedAction(actionName, seenActionNames, lastNameIdxs) {
   const seenActionNamesTemp = new Set(seenActionNames)
@@ -300,7 +301,7 @@ function getIndexedAction(actionName, seenActionNames, lastNameIdxs) {
 /**
  * Modifies action name by suffixing an index if the action name already exists
  *
- * @param {*} actionName - default name for the runtime action
+ * @param {string} actionName - default name for the runtime action
  * @returns {string} - entered action name or the default one
  */
 async function inputActionNamePrompt (actionName) {
