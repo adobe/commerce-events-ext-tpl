@@ -243,7 +243,6 @@ async function addEventstoManifest(eventsClient, eventProviderId, manifest, mani
     return
   }
 
-  manifest['eventProviderId'] = eventProviderId
   manifest[manifestNodeName] = manifest[manifestNodeName] || []
   manifest['seenActionNames'] = manifest['seenActionNames'] || new Set()
   manifest['lastNameIdxs'] = manifest['lastNameIdxs'] || {}
@@ -264,6 +263,7 @@ async function addEventstoManifest(eventsClient, eventProviderId, manifest, mani
   // Writes the node with the final action name and event codes
   manifest[manifestNodeName].push({
     name: newActionName,
+    eventProviderId: eventProviderId,
     eventCodes: eventCodes
   })
 }
