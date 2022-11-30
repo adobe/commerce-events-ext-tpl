@@ -247,14 +247,19 @@ async function addEventstoManifest(eventsClient, eventProviderId, manifest, mani
   manifest['seenActionNames'] = manifest['seenActionNames'] || new Set()
   manifest['lastNameIdxs'] = manifest['lastNameIdxs'] || {}
 
-  // Makes sure the action names don't clash with existing ones
+  // Makes sure that the suggested action name is unique
   const actionNames = manifest[manifestNodeName].map(node => node.name)
   if (actionNames.includes(actionName)) {
     var [ actionName, seenActionNamesTemp, lastNameIdxsTemp ] = getIndexedAction(actionName, manifest['seenActionNames'], manifest['lastNameIdxs'])
   }
 
+  // Repeats prompting until a unique runtime action name is entered
+  var newActionName = await inputActionNamePrompt(actionName, false)
+  while (actionNames.includes(newActionName)) {
+    newActionName = await inputActionNamePrompt(actionName, true)
+  }
+
   // Keeps track of the seen action names and their last name indices
-  var newActionName = await inputActionNamePrompt(actionName)
   if (newActionName === actionName) {
     manifest['seenActionNames'] = seenActionNamesTemp
     manifest['lastNameIdxs'] = lastNameIdxsTemp
@@ -302,13 +307,20 @@ function getIndexedAction(actionName, seenActionNames, lastNameIdxs) {
  * Modifies action name by suffixing an index if the action name already exists
  *
  * @param {string} actionName - default name for the runtime action
+ * @param {boolean} isRetry - boolean to identify a retry prompt
  * @returns {string} - entered action name or the default one
  */
-async function inputActionNamePrompt (actionName) {
+async function inputActionNamePrompt (actionName, isRetry) {
+  let promptMessage = "What do you want to name the serverless runtime action for listening to selected event(s)?"
+
+  if (isRetry) {
+    promptMessage = `The name is already taken. ${promptMessage}`
+  }
+
   const answer = await inquirer.prompt({
     type: 'input',
     name: 'actionName',
-    message: `What do you want to name the serverless runtime action for listening to selected event(s)?`,
+    message: promptMessage,
     default: actionName,
     validate (input) {
     // Must be a valid openwhisk action name, this is a simplified set see:

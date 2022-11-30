@@ -151,7 +151,7 @@ const promptMainMenu = async (manifest) => {
   choices.push(
     new inquirer.Separator(),
     {
-      name: "Add event listener for the configured event provider in your Adobe Commerce store",
+      name: "Add event listener for the event provider configured in your Adobe Commerce store",
       value: addEventListenerForCommerceInstance.bind(this, manifest, 'runtimeActions'),
     },
     {
