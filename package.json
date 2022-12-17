@@ -1,6 +1,6 @@
 {
   "name": "@adobe/commerce-events-ext-tpl",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "main": "src/index.js",
   "description": "Extensibility template for handling Commerce events",
   "engines": {
@@ -12,7 +12,7 @@
   "author": "Adobe Inc.",
   "license": "Apache-2.0",
   "dependencies": {
-    "@adobe/aio-cli-lib-console": "^3.3.0",
+    "@adobe/aio-cli-lib-console": "^4.0.0",
     "@adobe/aio-lib-core-config": "^2.0.1",
     "@adobe/aio-lib-events": "^1.1.5",
     "@adobe/aio-lib-ims": "^4.3.0",
@@ -21,7 +21,6 @@
     "@oclif/plugin-plugins": "^2.1.0",
     "chalk": "^4.0.0",
     "fs-extra": "^10.1.0",
-    "inquirer-autocomplete-prompt": "^2.0.0",
     "inquirer-search-list": "^1.2.6",
     "node-fetch": "^2.6.0",
     "slugify": "^1.6.5",

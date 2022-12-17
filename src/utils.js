@@ -15,6 +15,8 @@ const { getCliEnv } = require('@adobe/aio-lib-env')
 const { CLI } = require('@adobe/aio-lib-ims/src/context')
 const LibConsoleCLI = require('@adobe/aio-cli-lib-console')
 
+const { promptDocs, pluginExtensionOverview } = require('./info')
+
 const CONSOLE_API_KEYS = {
   prod: 'aio-cli-console-auth',
   stage: 'aio-cli-console-auth-stage'
@@ -22,13 +24,6 @@ const CONSOLE_API_KEYS = {
 
 const PLUGIN_EXTENSION = '@adobe/aio-cli-plugin-extension'
 const providersList = []
-
-const pluginExtensionInfoOverview = `\n${chalk.bold(chalk.blue(`App Builder Webhook Auto Subscriptions (${PLUGIN_EXTENSION}) Overview:`))}\n
-  * The integration between Adobe App Builder project and I/O Events simplifies creation of applications that listen to these events.
-  * App Builder webhook auto subscriptions push this concept further by subscribing your newly deployed project to I/O Events
-    automatically, so you can easily deploy your application in different environments.
-  * This technology minimizes the manual routine work for admins and reduces the possibility to mess up things during 
-    manual setup in the Developer Console.\n`
 
 /**
  * Reads manifest file
@@ -119,12 +114,9 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
   
   } catch (error) {
     console.log('\n' + error.message)
-    
-    if (error.code === 'ERROR_GET_ALL_EVENTMETADATA') {
-      spinner.warn(`Adobe I/O Event Provider ID '${providerId}' doesn't exist in your organization`)
-    }
-    console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceEventingDoc']}`)) + '\n');
-    process.exit(1)
+    console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceEventsSetupDoc']}`)) + '\n');
+    spinner.stop()
+    return []
   }
 }
 
@@ -191,7 +183,6 @@ async function findProvidersForCommerceEvents (client, orgId) {
 
   const choices = providers.map(e => { return { name: e.label, value: e.id, instance_id: e.instance_id } })
   inquirer.registerPrompt('search-list', require('inquirer-search-list'))
-  // inquirer.registerPrompt('search-list', require('inquirer-autocomplete-prompt'))
   
   const answer = await inquirer.prompt([
     {
@@ -215,6 +206,9 @@ async function findProvidersForCommerceEvents (client, orgId) {
  */
 async function addEventstoManifest(eventsClient, eventProviderId, manifest, manifestNodeName) {
   const eventsMetadata = await fetchEventsMetadataForProviderId(eventsClient, eventProviderId)
+
+  if (eventsMetadata.length === 0) { return }
+
   const choices = eventsMetadata.map(metadata => {
     return {
       name: metadata.eventCode + ' (' + metadata.eventLabel + ')',
@@ -367,7 +361,7 @@ async function installPluginExtension () {
   if (isInstalled) {
     spinner.info(`${PLUGIN_EXTENSION} is already installed and lets you subscribe to specified events automatically during the deploy phase. Skipping related prompt.`)
   } else {
-    console.log(pluginExtensionInfoOverview)
+    console.log(pluginExtensionOverview)
     const answer = await inquirer.prompt({
       type: "confirm",
       name: "installExtension",

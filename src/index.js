@@ -16,8 +16,9 @@ const chalk = require('chalk')
 const CommerceEventsActionGenerator = require('./generator-add-action-commerce-events')
 
 const { constants, utils } = require('@adobe/generator-app-common-lib')
-const { briefOverviews, promptDocs, promptTopLevelFields, promptMainMenu } = require('./prompts')
+const { promptTopLevelFields, promptMainMenu } = require('./prompts')
 const { readManifest, writeManifest } = require('./utils')
+const { templateOverview } = require('./info')
 
 const EXTENSION_MANIFEST_PATH = path.join(process.cwd(), 'extension-manifest.json')
 
@@ -62,7 +63,7 @@ class MainGenerator extends Generator {
 
   async prompting () {
     if (!this.options['is-test']) {
-      this.log(briefOverviews['templateInfo'])
+      this.log(templateOverview)
       await promptTopLevelFields(this.extensionManifest)
         .then(() => promptMainMenu(this.extensionManifest))
         .then(() => writeManifest(this.extensionManifest, EXTENSION_MANIFEST_PATH))
