@@ -10,6 +10,8 @@ governing permissions and limitations under the License.
 */
 
 const path = require('path')
+const { EOL } = require('os')
+
 const { constants, ActionGenerator, commonTemplates } = require('@adobe/generator-app-common-lib')
 const { commonDependencyVersions } = constants
 
@@ -58,7 +60,7 @@ const { Core } = require('@adobe/aio-sdk')`,
       LOG_LEVEL: 'debug',
       API_ENDPOINT: '$API_ENDPOINT'
     }
-    var templateDotEnvVars = ['API_ENDPOINT', 'PREFERRED_PROVIDERS']
+    var templateDotEnvVars = ['API_ENDPOINT']
 
     // Demo Project
     if (this.props.extensionManifest.templateFolder) {
@@ -90,7 +92,24 @@ const { Core } = require('@adobe/aio-sdk')`,
       },
       dotenvStub: { label: 'Place your local environment variables here', vars: templateDotEnvVars }
     })
+
+    if (!this.props.extensionManifest.templateFolder) {
+      const providerIds = `${[...new Set(this.props.extensionManifest.runtimeActions.map(action => action.eventProviderId))].join(',')}${EOL}`
+      appendStubVarsToDotenv(this, 'PREFERRED_PROVIDERS', providerIds)
+    }
   }
+}
+
+function appendStubVarsToDotenv (generator, key, val) {
+  const content = `${key}=${val}`
+  const file = generator.destinationPath('.env')
+
+  const prevContent = (generator.fs.exists(file) || '') && generator.fs.read(file)
+  if (prevContent.includes(key)) {
+    // if already there do nothing
+    return
+  }
+  generator.fs.append(file, content)
 }
 
 module.exports = CommerceEventsActionGenerator

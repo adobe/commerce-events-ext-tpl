@@ -145,7 +145,7 @@ describe('run', () => {
       { '@openwhisk/wskdebug': expect.any(String) }
     )
     assertEnvContent('#API_ENDPOINT=')
-    assertEnvContent('#PREFERRED_PROVIDERS')
+    assertEnvContent('PREFERRED_PROVIDERS')
   })
 
   test('test a generator invocation with demo code generation', async () => {

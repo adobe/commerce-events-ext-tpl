@@ -18,6 +18,7 @@ const path = require('path')
 const coreConfig = require('@adobe/aio-lib-core-config')
 
 const { readManifest, getEventsClient, findProvidersForCommerceEvents, selectEventProvider, addEventstoManifest, isPluginExtensionInstalled, installPluginExtension } = require('./utils')
+const { promptDocs } = require('./info')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
 const SLACK_DEMO_MANIFEST_PATH = path.join(__dirname, './templates/slack-demo/extension-manifest.json')
@@ -60,24 +61,6 @@ const retryPrompt = {
   name: "retry",
   message: "Retry again?",
   default: false
-}
-
-const briefOverviews = {
-  templateInfo: `\n${chalk.bold(chalk.blue("Commerce Events Extension Template Overview:"))}\n
-  * You have the option to generate boilerplate code for listening and acting on Commerce events.
-  * You can add the Commerce event listeners that you are interested in two ways:
-    -> Connect to your Adobe Commerce instance and select available events.
-    -> Choose one of the Commerce event providers available in your organization.\n
-  * You can install an optional plugin extension to enable App Builder webhook auto subscriptions.
-  * You can get help regarding documentation at any time from the menu.
-  * You can check out a sample demo project.
-  * An App Builder project will be created with Node.js packages pre-configured.\n`
-}
-
-const promptDocs = {
-  mainDoc: "https://developer-stage.adobe.com/commerce/events/events/",
-  commerceIntegrationDoc: "https://docs.magento.com/user-guide/system/integrations.html",
-  commerceEventsSetupDoc: "https://developer-stage.adobe.com/commerce/events/events/project-setup/"
 }
 
 // Top Level prompts
@@ -326,7 +309,6 @@ const promptGuideMenu = (manifest) => {
         manifest['description'] = slackDemoManifest['description'] || null
         manifest['version'] = slackDemoManifest['version'] || null
         manifest['templateFolder'] = slackDemoManifest['templateFolder'] || null
-        manifest['eventProviderId'] = slackDemoManifest['eventProviderId'] || null
         manifest['runtimeActions'] = slackDemoManifest['runtimeActions'] || null
         manifest['templateInputs'] = slackDemoManifest['templateInputs'] || null
         manifest['templateDotEnvVars'] = slackDemoManifest['templateDotEnvVars'] || null
@@ -377,8 +359,6 @@ const dummyPrompt = () => {
 }
 
 module.exports = {
-  briefOverviews,
   promptTopLevelFields,
-  promptMainMenu,
-  promptDocs
+  promptMainMenu
 }
