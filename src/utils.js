@@ -128,8 +128,8 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
  * @returns {*} - event provider(s) details
  */
 async function findProvidersForCommerceEvents (client, orgId) {
-  const commerceProviderMetadata = "3rd_party_custom_events"
-  // const commerceProviderMetadata = "dx_commerce_events"
+  // const commerceProviderMetadata = "3rd_party_custom_events"
+  const commerceProviderMetadata = "dx_commerce_events"
   // const providersList = []
   if (providersList.length === 0) {
     const spinner = ora()
