@@ -19,8 +19,8 @@ module.exports = {
     manual setup in the Developer Console.\n`,
 
   promptDocs: {
-    mainDoc: "https://developer-stage.adobe.com/commerce/events/events/",
+    mainDoc: "https://developer.adobe.com/commerce/events/get-started/",
     commerceIntegrationDoc: "https://docs.magento.com/user-guide/system/integrations.html",
-    commerceEventsSetupDoc: "https://developer-stage.adobe.com/commerce/events/events/project-setup/"
+    commerceConfigurationDoc: "https://developer.adobe.com/commerce/events/get-started/configure-commerce/"
   }
 }
