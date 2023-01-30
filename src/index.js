@@ -114,10 +114,6 @@ class MainGenerator extends Generator {
     this.log(chalk.bold('2) You can add your preferred event provider id in the ".env" file to simplify extension deployment.'))
     this.log(chalk.bold('3) You can modify the event codes in the "app.config.yaml" file.'))
     this.log(chalk.bold('4) You can use `aio app run` or `aio app deploy` to see the sample code files in action.'))
-    // if (this.extensionManifest.templateFolder) {
-    //   this.log(chalk.bold('3) Please refer to the link below for configuring the demo application:'))
-    //   this.log(chalk.blue(chalk.bold(`   -> ${promptDocs['configureSlackDoc']}`)))
-    // }
     this.log('\n')
   }
 }

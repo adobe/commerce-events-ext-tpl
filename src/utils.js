@@ -114,7 +114,7 @@ async function fetchEventsMetadataForProviderId (client, providerId) {
   
   } catch (error) {
     console.log('\n' + error.message)
-    console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceEventsSetupDoc']}`)) + '\n');
+    console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceConfigurationDoc']}`)) + '\n');
     spinner.stop()
     return []
   }

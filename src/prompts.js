@@ -246,7 +246,7 @@ const addEventListenerForCommerceInstance = async (manifest, manifestNodeName) =
           } else if (!providerIdValid) {
             spinner.warn(`Adobe I/O Event Provider ID '${eventProviderId}' doesn't exist in your organization`)
           }
-          console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceEventsSetupDoc']}`)) + '\n');
+          console.log(chalk.blue(chalk.bold(`To fix the issue, refer to this URL and try again:\n  -> ${promptDocs['commerceConfigurationDoc']}`)) + '\n');
           retryAnswer = await inquirer.prompt(retryPrompt)
         }
       } else {
