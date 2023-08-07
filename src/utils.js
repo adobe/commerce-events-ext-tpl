@@ -78,11 +78,11 @@ async function getEventsClient () {
   const apiKey = CONSOLE_API_KEYS[env]
   const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
   const workspaceCredsOAuth = await consoleCLI.getFirstOAuthServerToServerCredentials(orgId, projectConfig.id, workspace)
-  if(workspaceCredsOAuth === undefined){
+  if (workspaceCredsOAuth === undefined) {
     const workspaceCredsJWT = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
     const clientJWT = await eventsSdk.init(orgCode, workspaceCredsJWT.client_id, accessToken)
     return clientJWT
-  }else{
+  } else {
     const clientOAuth = await eventsSdk.init(orgCode, workspaceCredsOAuth.client_id, accessToken)
     return clientOAuth
   }
