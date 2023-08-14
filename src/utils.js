@@ -80,11 +80,9 @@ async function getEventsClient () {
   const workspaceCredsOAuth = await consoleCLI.getFirstOAuthServerToServerCredentials(orgId, projectConfig.id, workspace)
   if (workspaceCredsOAuth === undefined) {
     const workspaceCredsJWT = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
-    const clientJWT = await eventsSdk.init(orgCode, workspaceCredsJWT.client_id, accessToken)
-    return clientJWT
+    return await eventsSdk.init(orgCode, workspaceCredsJWT.client_id, accessToken)
   } else {
-    const clientOAuth = await eventsSdk.init(orgCode, workspaceCredsOAuth.client_id, accessToken)
-    return clientOAuth
+    return await eventsSdk.init(orgCode, workspaceCredsOAuth.client_id, accessToken)
   }
 }
 
