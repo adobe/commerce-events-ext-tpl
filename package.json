@@ -13,7 +13,7 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@adobe/aio-cli-lib-console": "^4.2.0",
-    "@adobe/aio-lib-core-config": "^2.0.1",
+    "@adobe/aio-lib-core-config": "^4.0.0",
     "@adobe/aio-lib-events": "^1.1.5",
     "@adobe/aio-lib-ims": "^4.3.0",
     "@adobe/generator-app-common-lib": "^0.3.3",
