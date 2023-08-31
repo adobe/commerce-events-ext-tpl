@@ -12,8 +12,8 @@
   "author": "Adobe Inc.",
   "license": "Apache-2.0",
   "dependencies": {
-    "@adobe/aio-cli-lib-console": "^4.0.0",
-    "@adobe/aio-lib-core-config": "^2.0.1",
+    "@adobe/aio-cli-lib-console": "^4.2.0",
+    "@adobe/aio-lib-core-config": "^4.0.0",
     "@adobe/aio-lib-events": "^1.1.5",
     "@adobe/aio-lib-ims": "^4.3.0",
     "@adobe/generator-app-common-lib": "^0.3.3",
@@ -33,9 +33,6 @@
     "@babel/polyfill": "^7.8.7",
     "@babel/preset-env": "^7.8.7",
     "@types/jest": "^28.1.8",
-    "jest": "^27",
-    "stdout-stderr": "^0.1.13",
-    "yeoman-test": "^6.3.0",
     "eol": "^0.9.1",
     "eslint": "^7.1.0",
     "eslint-config-standard": "^14.1.0",
@@ -44,10 +41,13 @@
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
+    "jest": "^27",
     "js-yaml": "^4.1.0",
+    "lodash.clonedeep": "^4.5.0",
+    "stdout-stderr": "^0.1.13",
     "yeoman-assert": "^3.1.1",
     "yeoman-environment": "^3.2.0",
-    "lodash.clonedeep": "^4.5.0"
+    "yeoman-test": "^6.3.0"
   },
   "peerDependencies": {
     "@adobe/aio-cli-plugin-app-templates": "^1.0.0"
