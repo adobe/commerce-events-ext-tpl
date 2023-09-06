@@ -77,13 +77,12 @@ async function getEventsClient () {
   const cliObject = await context.getCli()
   const apiKey = CONSOLE_API_KEYS[env]
   const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
-  const workspaceCredsOAuth = await consoleCLI.getFirstOAuthServerToServerCredentials(orgId, projectConfig.id, workspace)
-  if (workspaceCredsOAuth === undefined) {
-    const workspaceCredsJWT = await consoleCLI.getFirstEntpCredentials(orgId, projectConfig.id, workspace)
-    return await eventsSdk.init(orgCode, workspaceCredsJWT.client_id, accessToken)
-  } else {
-    return await eventsSdk.init(orgCode, workspaceCredsOAuth.client_id, accessToken)
+  const workspaceCreds = await consoleCLI.getFirstWorkspaceCredential(orgId, projectConfig.id, workspace)
+  if (typeof workspaceCreds === 'undefined') {
+    throw new Error('No valid credentials found for Workspace.')
   }
+  const client = await eventsSdk.init(orgCode, workspaceCreds.client_id, accessToken)
+  return client
 }
 
 /**
