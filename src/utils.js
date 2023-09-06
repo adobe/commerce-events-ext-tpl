@@ -78,6 +78,9 @@ async function getEventsClient () {
   const apiKey = CONSOLE_API_KEYS[env]
   const consoleCLI = await LibConsoleCLI.init({ accessToken: cliObject.access_token.token, env, apiKey: apiKey })
   const workspaceCreds = await consoleCLI.getFirstWorkspaceCredential(orgId, projectConfig.id, workspace)
+  if (typeof workspaceCreds === 'undefined') {
+    throw new Error('No valid credentials found for Workspace.')
+  }
   const client = await eventsSdk.init(orgCode, workspaceCreds.client_id, accessToken)
   return client
 }
