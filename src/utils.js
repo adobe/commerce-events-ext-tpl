@@ -22,7 +22,8 @@ const CONSOLE_API_KEYS = {
   stage: 'aio-cli-console-auth-stage'
 }
 
-const PLUGIN_EXTENSION = '@adobe/aio-cli-plugin-extension'
+// @adobe/aio-cli-plugin-extension is temporarily disabled until it's been updated.
+// const PLUGIN_EXTENSION = '@adobe/aio-cli-plugin-extension'
 const providersList = []
 
 /**
@@ -334,75 +335,77 @@ async function inputActionNamePrompt (actionName, isRetry) {
   return answer.actionName
 }
 
+// ----The following functionality is disabled until the @adobe/aio-cli-plugin-extension is updated. It is currently not behaving as expected.----//
+
 /**
  * Checks if @adobe/aio-cli-plugin-extension is already installed
  */
-async function isPluginExtensionInstalled () {
-  const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
-  const pluginsRegistry = new Plugins.default(oclifConfig)
-  const plugins = await pluginsRegistry.list()
-  const isInstalled = plugins.some(plugin => plugin.name === PLUGIN_EXTENSION)
+// async function isPluginExtensionInstalled () {
+//   const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
+//   const pluginsRegistry = new Plugins.default(oclifConfig)
+//   const plugins = await pluginsRegistry.list()
+//   const isInstalled = plugins.some(plugin => plugin.name === PLUGIN_EXTENSION)
 
-  return isInstalled
-}
+//   return isInstalled
+// }
 
 /**
  * Prompts for installing @adobe/aio-cli-plugin-extension if not already installed
  */
-async function installPluginExtension () {
-  const spinner = ora()
-  const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
-  const pluginsRegistry = new Plugins.default(oclifConfig)
+// async function installPluginExtension () {
+//   const spinner = ora()
+//   const oclifConfig = await Config.load(path.dirname(path.dirname(fs.realpathSync(process.argv[1]))))
+//   const pluginsRegistry = new Plugins.default(oclifConfig)
 
-  let isInstalled = await isPluginExtensionInstalled()
+//   let isInstalled = await isPluginExtensionInstalled()
 
-  // Nothing to do here, the plugin is already installed
-  if (isInstalled) {
-    spinner.info(`${PLUGIN_EXTENSION} is already installed and lets you subscribe to specified events automatically during the deploy phase. Skipping related prompt.`)
-  } else {
-    console.log(pluginExtensionOverview)
-    const answer = await inquirer.prompt({
-      type: "confirm",
-      name: "installExtension",
-      message: `Do you want to subscribe to specified events automatically during the deploy phase? This will install ${PLUGIN_EXTENSION}.`,
-      default: false
-    })
+//   // Nothing to do here, the plugin is already installed
+//   if (isInstalled) {
+//     spinner.info(`${PLUGIN_EXTENSION} is already installed and lets you subscribe to specified events automatically during the deploy phase. Skipping related prompt.`)
+//   } else {
+//     console.log(pluginExtensionOverview)
+//     const answer = await inquirer.prompt({
+//       type: "confirm",
+//       name: "installExtension",
+//       message: `Do you want to subscribe to specified events automatically during the deploy phase? This will install ${PLUGIN_EXTENSION}.`,
+//       default: false
+//     })
 
-    if (answer['installExtension']) {
-      spinner.start(`Installing plugin ${PLUGIN_EXTENSION}...`)
-      const originalYarnFork = pluginsRegistry.yarn.fork
+//     if (answer['installExtension']) {
+//       spinner.start(`Installing plugin ${PLUGIN_EXTENSION}...`)
+//       const originalYarnFork = pluginsRegistry.yarn.fork
 
-      try {
-        const silentFork = function (modulePath, args = [], options = {}) {
-          options.stdio = 'ignore'
-          return new Promise((resolve, reject) => {
-            const { fork } = require('child_process')
-            const forked = fork(modulePath, args, options)
-            forked.on('exit', (code) => {
-              if (code === 0) {
-                resolve()
-              }
-              else {
-                reject(new Error(`yarn ${args.join(' ')} exited with code ${code}`))
-              }
-            })
-          })
-        }
+//       try {
+//         const silentFork = function (modulePath, args = [], options = {}) {
+//           options.stdio = 'ignore'
+//           return new Promise((resolve, reject) => {
+//             const { fork } = require('child_process')
+//             const forked = fork(modulePath, args, options)
+//             forked.on('exit', (code) => {
+//               if (code === 0) {
+//                 resolve()
+//               }
+//               else {
+//                 reject(new Error(`yarn ${args.join(' ')} exited with code ${code}`))
+//               }
+//             })
+//           })
+//         }
 
-        pluginsRegistry.yarn.fork = silentFork
-        await pluginsRegistry.install(PLUGIN_EXTENSION)
-        pluginsRegistry.yarn.fork = originalYarnFork
-        spinner.succeed(`Installed plugin ${PLUGIN_EXTENSION}.`)
-        spinner.info(`Please uninstall ${PLUGIN_EXTENSION} to remove webhook auto subscriptions capability.\n`)
+//         pluginsRegistry.yarn.fork = silentFork
+//         await pluginsRegistry.install(PLUGIN_EXTENSION)
+//         pluginsRegistry.yarn.fork = originalYarnFork
+//         spinner.succeed(`Installed plugin ${PLUGIN_EXTENSION}.`)
+//         spinner.info(`Please uninstall ${PLUGIN_EXTENSION} to remove webhook auto subscriptions capability.\n`)
       
-      } catch (error) {
-        pluginsRegistry.yarn.fork = originalYarnFork
-        console.log('Error: ' + error)
-        spinner.stop()
-      }
-    }
-  }
-}
+//       } catch (error) {
+//         pluginsRegistry.yarn.fork = originalYarnFork
+//         console.log('Error: ' + error)
+//         spinner.stop()
+//       }
+//     }
+//   }
+// }
 
 module.exports = {
   readManifest,
@@ -412,6 +415,6 @@ module.exports = {
   findProvidersForCommerceEvents,
   selectEventProvider,
   addEventstoManifest,
-  isPluginExtensionInstalled,
-  installPluginExtension
+  // isPluginExtensionInstalled,
+  // installPluginExtension
 }

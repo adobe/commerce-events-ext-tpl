@@ -17,7 +17,8 @@ const path = require('path')
 
 const coreConfig = require('@adobe/aio-lib-core-config')
 
-const { readManifest, getEventsClient, findProvidersForCommerceEvents, selectEventProvider, addEventstoManifest, isPluginExtensionInstalled, installPluginExtension } = require('./utils')
+// The isPluginExtensionInstalled, installPluginExtension functions will be added here once the @adobe/aio-cli-plugin-extension is up to date.
+const { readManifest, getEventsClient, findProvidersForCommerceEvents, selectEventProvider, addEventstoManifest } = require('./utils')
 const { promptDocs } = require('./info')
 
 const CHECK_EVENTS_CONFIG_ENDPOINT = "/rest/V1/adobe_io_events/check_configuration"
@@ -142,15 +143,15 @@ const promptMainMenu = async (manifest) => {
       value: addEventListenerForEventProvider.bind(this, manifest, 'runtimeActions'),
     }
   )
-
-  if (!await isPluginExtensionInstalled()) {
-    choices.push(
-      {
-        name: "Subscribe to events automatically during deployment",
-        value: installPluginExtension.bind(this)
-      }
-    )
-  }
+// This functionality is desabled until the @adobe/plugin-extension ishttps://1-1-0-beta1-testing-kvixs6i-sgaxuvyy4jwem.us-4.magentosite.cloud/
+  // if (!await isPluginExtensionInstalled()) {
+  //   choices.push(
+  //     {
+  //       name: "Subscribe to events automatically during deployment",
+  //       value: installPluginExtension.bind(this)
+  //     }
+  //   )
+  // }
 
   choices.push(
     new inquirer.Separator(),
@@ -270,11 +271,11 @@ const addEventListenerForCommerceInstance = async (manifest, manifestNodeName) =
   if (isConfigured) {
     const eventsClient = await getEventsClient()
     await addEventstoManifest(eventsClient, eventProviderId, manifest, manifestNodeName)
-
+    // This prompt to install @adobe/aio-cli-plugin-extension will be removes until it's up to date.
     // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
-    if (!await isPluginExtensionInstalled()) {
-      await installPluginExtension()
-    }
+    // if (!await isPluginExtensionInstalled()) {
+    //   await installPluginExtension()
+    // }
   }  
 }
 
@@ -285,11 +286,12 @@ const addEventListenerForEventProvider = async (manifest, manifestNodeName) => {
   const eventProvider = await selectEventProvider(providers)
 
   await addEventstoManifest(eventsClient, eventProvider.id, manifest, manifestNodeName)
-
+  
+    // This prompt to install @adobe/aio-cli-plugin-extension will be removes until it's up to date.
   // Prompt to install @adobe/aio-cli-plugin-extension if it's not already installed
-  if (!await isPluginExtensionInstalled()) {
-    await installPluginExtension()
-  }
+  // if (!await isPluginExtensionInstalled()) {
+  //   await installPluginExtension()
+  // }
 }
 
 // Guide Menu Prompts
