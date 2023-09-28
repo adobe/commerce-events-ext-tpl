@@ -22,7 +22,6 @@ const CONSOLE_API_KEYS = {
   stage: 'aio-cli-console-auth-stage'
 }
 
-
 const providersList = []
 
 /**

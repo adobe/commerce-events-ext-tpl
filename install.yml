@@ -9,5 +9,4 @@ apis:
   - code: AdobeIOManagementAPISDK
   - code: commerceeventing
 
-
 runtime: true
