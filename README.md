@@ -18,6 +18,7 @@ Extensibility Template for Handling Commerce Events
 - `aio` command line tool - https://github.com/adobe/aio-cli, https://developer.adobe.com/runtime/docs/guides/tools/cli_install/
 - Project in Adobe developer console
 - I/O Management API
+- Adobe I/O Events for Adobe Commerce 
 
 # Installation
 - `npm install -g @adobe/aio-cli`
@@ -28,7 +29,6 @@ Extensibility Template for Handling Commerce Events
     OR
    `aio app init <your-folder-name> --template <absolute-path-to-template-folder>`
 3. Check your `app.config.yaml` file to see if the actions and event codes are set up correctly.
-4. `aio app deploy` & `aio app undeploy` will take care of the event registration/subscription if `aio-cli-plugin-extension` is installed.
 
 # Production Usage
 1. `aio app init <your-folder-name>`
